@@ -522,7 +522,7 @@
                         <h6 class="mb-3 mt-4"><i class="bi bi-link-45deg me-2"></i>Link de Rastreamento</h6>
                         <div class="row">
                             <div class="col-md-10 mb-3">
-                                <label class="form-label">URL de Rastreamento do Voo</label>
+                                <label class="form-label">URL de Rastreamento - Localizador 1</label>
                                 <input type="url" class="form-control" id="linkRastreamento" placeholder="https://..." oninput="toggleBotaoRastreamento()">
                                 <small class="text-muted">Cole o link do site da companhia aérea para acompanhar o voo</small>
                             </div>
@@ -533,6 +533,7 @@
                                 </button>
                             </div>
                         </div>
+                        <div id="linksRastreamentoExtras"></div>
 
                         <!-- Valores Financeiros -->
                         <h6 class="mb-3 mt-4"><i class="bi bi-cash-stack me-2"></i>Valores Financeiros</h6>
@@ -754,15 +755,79 @@
         }
 
         // Mostrar/esconder botão de abrir link
-        function toggleBotaoRastreamento() {
-            const linkInput = document.getElementById('linkRastreamento');
-            const btnAbrir = document.getElementById('btnAbrirLink');
+        function toggleBotaoRastreamento(index = 1) {
+            const linkInput = document.getElementById(index === 1 ? 'linkRastreamento' : `linkRastreamento_${index}`);
+            const btnAbrir = document.getElementById(index === 1 ? 'btnAbrirLink' : `btnAbrirLink_${index}`);
+            if (!linkInput || !btnAbrir) return;
             btnAbrir.style.display = (linkInput.value && linkInput.value.trim() !== '') ? 'block' : 'none';
         }
 
-        function abrirLinkRastreamento() {
-            const link = document.getElementById('linkRastreamento').value;
+        function abrirLinkRastreamento(index = 1) {
+            const input = document.getElementById(index === 1 ? 'linkRastreamento' : `linkRastreamento_${index}`);
+            const link = input ? input.value : '';
             if (link && link.trim() !== '') window.open(link, '_blank');
+        }
+
+        function obterLinksRastreamento() {
+            const links = [];
+            document.querySelectorAll('.localizador-item').forEach(item => {
+                const index = item.getAttribute('data-index');
+                const inputLocalizador = item.querySelector('.localizador-input');
+                if (!inputLocalizador || !inputLocalizador.value.trim()) return;
+
+                const inputLink = document.getElementById(index === '1' ? 'linkRastreamento' : `linkRastreamento_${index}`);
+                links.push(inputLink ? inputLink.value.trim() : '');
+            });
+            return links;
+        }
+
+        function escaparAtributoHtml(valor) {
+            return (valor || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function atualizarCamposLinksRastreamento(links = null) {
+            const valoresAtuais = Array.isArray(links) ? links : obterLinksRastreamento();
+            const extras = document.getElementById('linksRastreamentoExtras');
+            if (!extras) return;
+
+            const itens = Array.from(document.querySelectorAll('.localizador-item'));
+            extras.innerHTML = '';
+
+            itens.forEach((item, posicao) => {
+                const index = item.getAttribute('data-index');
+                if (index === '1') {
+                    if (valoresAtuais[0] !== undefined) {
+                        document.getElementById('linkRastreamento').value = valoresAtuais[0] || '';
+                    }
+                    toggleBotaoRastreamento();
+                    return;
+                }
+
+                const numeroVisual = posicao + 1;
+                const valor = valoresAtuais[posicao] || '';
+                extras.insertAdjacentHTML('beforeend', `
+                    <div class="row">
+                        <div class="col-md-10 mb-3">
+                            <label class="form-label">URL de Rastreamento - Localizador ${numeroVisual}</label>
+                            <input type="url" class="form-control" id="linkRastreamento_${index}" placeholder="https://..."
+                                   value="${escaparAtributoHtml(valor)}" oninput="toggleBotaoRastreamento(${index})">
+                            <small class="text-muted">Use quando este localizador tiver um link de rastreio próprio</small>
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-info w-100" id="btnAbrirLink_${index}"
+                                    onclick="abrirLinkRastreamento(${index})" style="display: none;">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Abrir
+                            </button>
+                        </div>
+                    </div>
+                `);
+                toggleBotaoRastreamento(index);
+            });
         }
 
         function toggleBotaoRastreamentoVolta() {
@@ -1095,6 +1160,7 @@
             `;
 
             container.appendChild(novoLocalizador);
+            atualizarCamposLinksRastreamento();
         }
 
         function removerLocalizador(index) {
@@ -1102,6 +1168,7 @@
             if (item) {
                 item.remove();
             }
+            atualizarCamposLinksRastreamento();
         }
 
         function limparLocalizadores() {
@@ -1121,6 +1188,7 @@
             }
 
             contadorLocalizadores = 1;
+            atualizarCamposLinksRastreamento([]);
         }
 
         function obterLocalizadores() {
@@ -1156,6 +1224,7 @@
                 adicionarLocalizador();
                 document.getElementById(`localizador_${i + 1}`).value = localizadores[i];
             }
+            atualizarCamposLinksRastreamento();
         }
 
         // Gerar campos dinâmicos de passageiros
@@ -1542,8 +1611,7 @@
                 document.getElementById('observacoes').value = venda.observacoes || '';
 
                 // Link de rastreamento
-                document.getElementById('linkRastreamento').value = venda.linkRastreamento || '';
-                toggleBotaoRastreamento();
+                atualizarCamposLinksRastreamento(venda.linksRastreamento || [venda.linkRastreamento || '']);
 
                 // Parcelas
                 if (venda.formaPagamento === 'credito_parcelado') {
@@ -1587,7 +1655,7 @@
                 document.getElementById('camposPassageiros').innerHTML = '';
                 document.getElementById('campoParcelas').style.display = 'none';
                 document.getElementById('linkRastreamento').value = '';
-                toggleBotaoRastreamento();
+                atualizarCamposLinksRastreamento([]);
             }
 
             modalVenda.show();
@@ -1651,6 +1719,7 @@
                 horaVenda = document.getElementById('horaVendaManual').value;
             }
 
+            const linksRastreamento = obterLinksRastreamento();
             const venda = {
                 localizadores: obterLocalizadores(),
                 numeroCompra: document.getElementById('numeroCompra').value.toUpperCase() || '',
@@ -1683,7 +1752,8 @@
                 formaPagamento: document.getElementById('formaPagamento').value,
                 parcelas: parseInt(document.getElementById('parcelas').value) || 1,
                 observacoes: document.getElementById('observacoes').value,
-                linkRastreamento: document.getElementById('linkRastreamento').value,
+                linksRastreamento: linksRastreamento,
+                linkRastreamento: linksRastreamento[0] || document.getElementById('linkRastreamento').value,
                 dataVenda: dataVenda,
                 horaVenda: horaVenda
             };
@@ -1749,7 +1819,7 @@
                 removerFornecedor2();
             }
             document.getElementById('numeroVoo').value = venda.numeroVoo || '';
-            document.getElementById('linkRastreamento').value = venda.linkRastreamento || '';
+            atualizarCamposLinksRastreamento(venda.linksRastreamento || [venda.linkRastreamento || '']);
             document.getElementById('valorCusto').value = Utils.numeroParaMoeda(venda.valorCusto);
             document.getElementById('valorMilhas').value = venda.valorMilhas ? Utils.numeroParaMoeda(venda.valorMilhas) : '';
             document.getElementById('valorVenda').value = Utils.numeroParaMoeda(venda.valorVenda);
