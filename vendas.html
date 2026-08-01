@@ -655,8 +655,8 @@
 
     <!-- Custom JS -->
     <script src="js/aeroportos-data.js?v=7"></script>
-    <script src="js/storage.js?v=7"></script>
-    <script src="js/utils.js?v=7"></script>
+    <script src="js/storage.js?v=8"></script>
+    <script src="js/utils.js?v=8"></script>
 
     <script>
         let modalVenda;
@@ -803,6 +803,7 @@
             document.getElementById('novoClienteTelefone').addEventListener('input', function() {
                 Utils.aplicarMascaraTelefone(this);
             });
+            Utils.configurarFormatacaoNome(document.getElementById('novoClienteNome'));
 
             // Verificar se veio de uma cotação
             verificarCotacaoParaVenda();
@@ -1276,6 +1277,8 @@
 
             // Aplicar máscaras de CPF
             for (let i = 1; i <= numPassageirosACadastrar; i++) {
+                Utils.configurarFormatacaoNome(document.getElementById(`passageiroNome_${i}`));
+                Utils.configurarFormatacaoNome(document.getElementById(`novoPassageiroNome_${i}`));
                 document.getElementById(`passageiroCpf_${i}`).addEventListener('input', function() {
                     Utils.aplicarMascaraCPF(this);
                 });

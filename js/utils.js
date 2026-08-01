@@ -95,6 +95,21 @@ const Utils = {
             .join(' ');
     },
 
+    aplicarFormatacaoNome(input) {
+        if (!input || !input.value) return;
+        input.value = this.formatarNomeProprio(input.value);
+    },
+
+    configurarFormatacaoNome(input) {
+        if (!input || input.dataset.nomeFormatadoConfigurado === 'true') return;
+        input.dataset.nomeFormatadoConfigurado = 'true';
+
+        input.addEventListener('blur', () => this.aplicarFormatacaoNome(input));
+        input.addEventListener('paste', () => {
+            setTimeout(() => this.aplicarFormatacaoNome(input), 0);
+        });
+    },
+
     // ========== CÁLCULOS ==========
 
     calcularMargemLucro(valorVenda, valorCusto) {
