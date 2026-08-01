@@ -369,6 +369,65 @@
                         <!-- Campos Dinâmicos de Passageiros -->
                         <div id="camposPassageiros"></div>
 
+                        <!-- Tipo da Venda -->
+                        <h6 class="mb-3 mt-4"><i class="bi bi-tags-fill me-2"></i>Tipo da Venda</h6>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <div class="btn-group" role="group" aria-label="Tipo da venda">
+                                    <input type="radio" class="btn-check" name="tipoVenda" id="tipoVendaAereo" value="aereo" checked onchange="toggleTipoVenda()">
+                                    <label class="btn btn-outline-primary" for="tipoVendaAereo">
+                                        <i class="bi bi-airplane me-1"></i>Somente aéreo
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="tipoVenda" id="tipoVendaPacote" value="pacote" onchange="toggleTipoVenda()">
+                                    <label class="btn btn-outline-primary" for="tipoVendaPacote">
+                                        <i class="bi bi-box-seam me-1"></i>Pacote
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="camposPacoteVenda" class="border rounded bg-light p-3 mb-3" style="display:none;">
+                            <div class="fw-semibold mb-2">Itens incluídos no pacote</div>
+                            <div class="row">
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pacoteIncluiAereo" checked>
+                                        <label class="form-check-label" for="pacoteIncluiAereo">Aéreo</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pacoteIncluiHotel">
+                                        <label class="form-check-label" for="pacoteIncluiHotel">Hotel</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pacoteIncluiSeguro">
+                                        <label class="form-check-label" for="pacoteIncluiSeguro">Seguro viagem</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pacoteIncluiVeiculo">
+                                        <label class="form-check-label" for="pacoteIncluiVeiculo">Aluguel de veículo</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pacoteIncluiAssentos">
+                                        <label class="form-check-label" for="pacoteIncluiAssentos">Assentos marcados</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pacoteIncluiPasseios">
+                                        <label class="form-check-label" for="pacoteIncluiPasseios">Passeios/ingressos</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Dados do Voo -->
                         <h6 class="mb-3 mt-4"><i class="bi bi-airplane-fill me-2"></i>Dados do Voo</h6>
 
@@ -850,6 +909,67 @@
             document.getElementById('fornecedor2Row').style.display = 'none';
             document.getElementById('btnAdicionarFornecedor2').style.display = 'block';
             document.getElementById('fornecedorId2').value = '';
+        }
+
+        function toggleTipoVenda() {
+            const tipo = document.querySelector('input[name="tipoVenda"]:checked')?.value || 'aereo';
+            const camposPacote = document.getElementById('camposPacoteVenda');
+            camposPacote.style.display = tipo === 'pacote' ? 'block' : 'none';
+
+            if (tipo === 'pacote') {
+                document.getElementById('pacoteIncluiAereo').checked = true;
+            }
+        }
+
+        function obterItensPacoteVenda() {
+            return {
+                aereo: document.getElementById('pacoteIncluiAereo').checked,
+                hotel: document.getElementById('pacoteIncluiHotel').checked,
+                seguro: document.getElementById('pacoteIncluiSeguro').checked,
+                veiculo: document.getElementById('pacoteIncluiVeiculo').checked,
+                assentos: document.getElementById('pacoteIncluiAssentos').checked,
+                passeios: document.getElementById('pacoteIncluiPasseios').checked
+            };
+        }
+
+        function limparTipoVenda() {
+            document.getElementById('tipoVendaAereo').checked = true;
+            document.getElementById('tipoVendaPacote').checked = false;
+            document.getElementById('pacoteIncluiAereo').checked = true;
+            document.getElementById('pacoteIncluiHotel').checked = false;
+            document.getElementById('pacoteIncluiSeguro').checked = false;
+            document.getElementById('pacoteIncluiVeiculo').checked = false;
+            document.getElementById('pacoteIncluiAssentos').checked = false;
+            document.getElementById('pacoteIncluiPasseios').checked = false;
+            toggleTipoVenda();
+        }
+
+        function preencherTipoVenda(venda) {
+            const tipo = venda.tipoVenda || 'aereo';
+            document.getElementById(tipo === 'pacote' ? 'tipoVendaPacote' : 'tipoVendaAereo').checked = true;
+
+            const itens = venda.itensPacote || {};
+            document.getElementById('pacoteIncluiAereo').checked = itens.aereo !== false;
+            document.getElementById('pacoteIncluiHotel').checked = !!itens.hotel;
+            document.getElementById('pacoteIncluiSeguro').checked = !!itens.seguro;
+            document.getElementById('pacoteIncluiVeiculo').checked = !!itens.veiculo;
+            document.getElementById('pacoteIncluiAssentos').checked = !!itens.assentos;
+            document.getElementById('pacoteIncluiPasseios').checked = !!itens.passeios;
+            toggleTipoVenda();
+        }
+
+        function formatarItensPacoteVenda(venda) {
+            if ((venda.tipoVenda || 'aereo') !== 'pacote') return '';
+
+            const itens = venda.itensPacote || {};
+            const labels = [];
+            if (itens.aereo !== false) labels.push('Aéreo');
+            if (itens.hotel) labels.push('Hotel');
+            if (itens.seguro) labels.push('Seguro viagem');
+            if (itens.veiculo) labels.push('Aluguel de veículo');
+            if (itens.assentos) labels.push('Assentos marcados');
+            if (itens.passeios) labels.push('Passeios/ingressos');
+            return labels.length ? labels.join(', ') : 'Itens não especificados';
         }
 
         // Inicializar modal
@@ -1591,6 +1711,7 @@
                 definirClientePorId(venda.clienteId);
                 document.getElementById('clienteViaja').checked = venda.clienteViaja;
                 document.getElementById('quantidadePassageiros').value = venda.quantidadePassageiros;
+                preencherTipoVenda(venda);
 
                 // Dados do voo
                 document.getElementById('companhiaAerea').value = venda.companhiaAerea;
@@ -1646,6 +1767,7 @@
                 document.getElementById('buscaCliente').value = '';
                 document.getElementById('listaClientesResultado').style.display = 'none';
                 cancelarCadastroClienteRapido();
+                limparTipoVenda();
                 document.getElementById('vendaId').value = '';
                 document.getElementById('companhiaDiferenteVolta').checked = false;
                 toggleCompanhiaVolta();
@@ -1720,7 +1842,10 @@
             }
 
             const linksRastreamento = obterLinksRastreamento();
+            const tipoVenda = document.querySelector('input[name="tipoVenda"]:checked')?.value || 'aereo';
             const venda = {
+                tipoVenda: tipoVenda,
+                itensPacote: tipoVenda === 'pacote' ? obterItensPacoteVenda() : {},
                 localizadores: obterLocalizadores(),
                 numeroCompra: document.getElementById('numeroCompra').value.toUpperCase() || '',
                 clienteId: document.getElementById('clienteId').value,
@@ -1828,6 +1953,7 @@
             document.getElementById('observacoes').value = venda.observacoes || '';
             document.getElementById('quantidadePassageiros').value = venda.quantidadePassageiros;
             document.getElementById('clienteViaja').checked = venda.clienteViaja;
+            preencherTipoVenda(venda);
 
             // Preencher data da venda se existir
             if (venda.dataVenda) {
@@ -1960,6 +2086,30 @@
                     doc.setTextColor(100, 100, 100);
                     doc.text(`Número da Compra: ${venda.numeroCompra}`, 105, 70, { align: 'center' });
                     y = 78;
+                }
+
+                if ((venda.tipoVenda || 'aereo') === 'pacote') {
+                    const itensPacoteTexto = formatarItensPacoteVenda(venda);
+
+                    y += 3;
+                    doc.setFillColor(245, 245, 245);
+                    doc.rect(10, y, 190, 8, 'F');
+                    doc.setTextColor(44, 62, 80);
+                    doc.setFont(undefined, 'bold');
+                    doc.setFontSize(11);
+                    doc.text('TIPO DA VENDA', 12, y + 5.5);
+
+                    y += 10;
+                    doc.setFont(undefined, 'normal');
+                    doc.setFontSize(10);
+                    doc.text('Pacote', 12, y);
+                    y += 5;
+
+                    doc.setFontSize(9);
+                    const itensLines = doc.splitTextToSize(`Inclui: ${itensPacoteTexto}`, 180);
+                    doc.text(itensLines, 12, y);
+                    y += itensLines.length * 5;
+                    doc.setFontSize(10);
                 }
 
                 // ========== CLIENTE RESPONSÁVEL ==========
@@ -2322,10 +2472,13 @@
                 } else {
                     localizadoresDisplay = 'N/A';
                 }
+                const tipoVendaBadge = (venda.tipoVenda || 'aereo') === 'pacote'
+                    ? '<br><span class="badge bg-info text-dark mt-1">Pacote</span>'
+                    : '';
 
                 html += `
                     <tr>
-                        <td><strong>${localizadoresDisplay}</strong></td>
+                        <td><strong>${localizadoresDisplay}</strong>${tipoVendaBadge}</td>
                         <td>${cliente ? cliente.nome : 'N/A'}</td>
                         <td>${nomeOrigem} → ${nomeDestino}</td>
                         <td>${Utils.formatDate(venda.dataEmbarque)}</td>
