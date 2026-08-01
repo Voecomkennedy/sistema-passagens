@@ -285,8 +285,55 @@
                                          style="display:none; z-index:1000; max-height:240px; overflow-y:auto;"></div>
                                 </div>
                                 <small class="text-muted">
-                                    Não encontrou? <a href="pessoas.html" target="_blank">Cadastrar novo cliente</a>
+                                    Não encontrou?
+                                    <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+                                            onclick="abrirCadastroClienteRapido()">
+                                        cadastrar novo cliente
+                                    </button>
                                 </small>
+                                <div id="cadastroClienteRapido" class="border rounded bg-light p-3 mt-3"
+                                     style="display:none;">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <strong>Novo cliente responsável</strong>
+                                        <button type="button" class="btn-close"
+                                                onclick="cancelarCadastroClienteRapido()"
+                                                aria-label="Fechar cadastro rápido"></button>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nome completo *</label>
+                                            <input type="text" class="form-control" id="novoClienteNome">
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label class="form-label">CPF</label>
+                                            <input type="text" class="form-control" id="novoClienteCpf" maxlength="14">
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label class="form-label">Nascimento</label>
+                                            <input type="date" class="form-control" id="novoClienteNascimento">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Telefone</label>
+                                            <input type="text" class="form-control" id="novoClienteTelefone" maxlength="15">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">E-mail</label>
+                                            <input type="email" class="form-control" id="novoClienteEmail">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="cancelarCadastroClienteRapido()">
+                                            Cancelar
+                                        </button>
+                                        <button type="button" class="btn btn-success btn-sm"
+                                                onclick="salvarCadastroClienteRapido()">
+                                            <i class="bi bi-save me-1"></i>Salvar e selecionar
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-2 mb-3">
                                 <label class="form-label">Cliente viaja?</label>
@@ -750,6 +797,12 @@
 
             // Adicionar evento de busca
             document.getElementById('busca').addEventListener('input', aplicarFiltros);
+            document.getElementById('novoClienteCpf').addEventListener('input', function() {
+                Utils.aplicarMascaraCPF(this);
+            });
+            document.getElementById('novoClienteTelefone').addEventListener('input', function() {
+                Utils.aplicarMascaraTelefone(this);
+            });
 
             // Verificar se veio de uma cotação
             verificarCotacaoParaVenda();
@@ -899,6 +952,66 @@
             document.getElementById('clienteId').value = cliente.id;
             document.getElementById('buscaCliente').value = cliente.nome + (cliente.cpf ? ` - ${Utils.formatCPF(cliente.cpf)}` : '');
             document.getElementById('listaClientesResultado').style.display = 'none';
+        }
+
+        function abrirCadastroClienteRapido() {
+            const bloco = document.getElementById('cadastroClienteRapido');
+            if (!bloco) return;
+
+            const nomeAtual = document.getElementById('buscaCliente').value
+                .replace(/\s-\s\d{3}\.\d{3}\.\d{3}-\d{2}$/, '')
+                .trim();
+
+            document.getElementById('novoClienteNome').value = nomeAtual || '';
+            document.getElementById('listaClientesResultado').style.display = 'none';
+            bloco.style.display = 'block';
+            document.getElementById('novoClienteNome').focus();
+        }
+
+        function cancelarCadastroClienteRapido() {
+            const bloco = document.getElementById('cadastroClienteRapido');
+            if (!bloco) return;
+
+            bloco.style.display = 'none';
+            document.getElementById('novoClienteNome').value = '';
+            document.getElementById('novoClienteCpf').value = '';
+            document.getElementById('novoClienteNascimento').value = '';
+            document.getElementById('novoClienteTelefone').value = '';
+            document.getElementById('novoClienteEmail').value = '';
+        }
+
+        function salvarCadastroClienteRapido() {
+            const nome = document.getElementById('novoClienteNome').value.trim();
+            const cpf = document.getElementById('novoClienteCpf').value.trim();
+
+            if (!nome) {
+                alert('Informe o nome completo do cliente.');
+                document.getElementById('novoClienteNome').focus();
+                return;
+            }
+
+            if (cpf && !Utils.validarCPF(cpf)) {
+                alert('CPF inválido.');
+                document.getElementById('novoClienteCpf').focus();
+                return;
+            }
+
+            const cliente = StorageManager.addPessoa({
+                tipo: 'cliente',
+                nome,
+                cpf,
+                dataNascimento: document.getElementById('novoClienteNascimento').value,
+                telefone: document.getElementById('novoClienteTelefone').value,
+                email: document.getElementById('novoClienteEmail').value
+            });
+
+            carregarClientes();
+            if (typeof carregarPassageirosCache === 'function') {
+                carregarPassageirosCache();
+            }
+            selecionarCliente(cliente.id);
+            cancelarCadastroClienteRapido();
+            Utils.showSuccess('Cliente cadastrado e selecionado na venda.');
         }
 
         // Define o cliente programaticamente (usado ao editar venda ou carregar cotação)
@@ -1461,6 +1574,7 @@
                 document.getElementById('clienteId').value = '';
                 document.getElementById('buscaCliente').value = '';
                 document.getElementById('listaClientesResultado').style.display = 'none';
+                cancelarCadastroClienteRapido();
                 document.getElementById('vendaId').value = '';
                 document.getElementById('companhiaDiferenteVolta').checked = false;
                 toggleCompanhiaVolta();
