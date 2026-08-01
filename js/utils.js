@@ -69,6 +69,32 @@ const Utils = {
         return phone;
     },
 
+    formatarNomeProprio(nome) {
+        if (!nome) return '';
+
+        const palavrasMinusculas = new Set(['da', 'das', 'de', 'di', 'do', 'dos', 'du', 'e']);
+
+        return nome
+            .toString()
+            .trim()
+            .replace(/\s+/g, ' ')
+            .toLocaleLowerCase('pt-BR')
+            .split(' ')
+            .map((palavra, index) => {
+                if (index > 0 && palavrasMinusculas.has(palavra)) return palavra;
+
+                return palavra
+                    .split('-')
+                    .map(parte => parte
+                        .split("'")
+                        .map(pedaco => pedaco ? pedaco.charAt(0).toLocaleUpperCase('pt-BR') + pedaco.slice(1) : pedaco)
+                        .join("'")
+                    )
+                    .join('-');
+            })
+            .join(' ');
+    },
+
     // ========== CÁLCULOS ==========
 
     calcularMargemLucro(valorVenda, valorCusto) {

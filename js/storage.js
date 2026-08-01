@@ -87,8 +87,16 @@ const StorageManager = {
         localStorage.setItem(this.KEYS.PESSOAS, JSON.stringify(pessoas));
     },
 
+    normalizarPessoa(pessoa) {
+        if (pessoa && pessoa.nome && typeof Utils !== 'undefined' && Utils.formatarNomeProprio) {
+            pessoa.nome = Utils.formatarNomeProprio(pessoa.nome);
+        }
+        return pessoa;
+    },
+
     addPessoa(pessoa) {
         const pessoas = this.getPessoas();
+        this.normalizarPessoa(pessoa);
         pessoa.id = this.generateId();
         pessoa.dataCadastro = new Date().toISOString();
         pessoas.push(pessoa);
@@ -100,6 +108,7 @@ const StorageManager = {
         const pessoas = this.getPessoas();
         const index = pessoas.findIndex(p => p.id === id);
         if (index !== -1) {
+            this.normalizarPessoa(pessoaAtualizada);
             pessoas[index] = { ...pessoas[index], ...pessoaAtualizada };
             this.savePessoas(pessoas);
             return pessoas[index];
