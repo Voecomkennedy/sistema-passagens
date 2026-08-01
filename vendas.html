@@ -1088,8 +1088,55 @@
                                     <div id="passageiroResultado_${i}" class="list-group position-absolute w-100 shadow"
                                          style="display:none; z-index:1056; max-height:240px; overflow-y:auto;"></div>
                                     <small class="text-muted">
-                                        Digite parte do nome. Ou <a href="pessoas.html" target="_blank">cadastrar novo passageiro</a>
+                                        Digite parte do nome. Ou
+                                        <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+                                                onclick="abrirCadastroPassageiroRapido(${i})">
+                                            cadastrar novo passageiro
+                                        </button>
                                     </small>
+                                    <div id="cadastroPassageiroRapido_${i}" class="border rounded bg-light p-3 mt-3"
+                                         style="display:none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <strong>Novo passageiro</strong>
+                                            <button type="button" class="btn-close"
+                                                    onclick="cancelarCadastroPassageiroRapido(${i})"
+                                                    aria-label="Fechar cadastro rápido"></button>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Nome completo *</label>
+                                                <input type="text" class="form-control" id="novoPassageiroNome_${i}">
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">CPF</label>
+                                                <input type="text" class="form-control" id="novoPassageiroCpf_${i}" maxlength="14">
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Nascimento</label>
+                                                <input type="date" class="form-control" id="novoPassageiroNascimento_${i}">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Telefone</label>
+                                                <input type="text" class="form-control" id="novoPassageiroTelefone_${i}" maxlength="15">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">E-mail</label>
+                                                <input type="email" class="form-control" id="novoPassageiroEmail_${i}">
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    onclick="cancelarCadastroPassageiroRapido(${i})">
+                                                Cancelar
+                                            </button>
+                                            <button type="button" class="btn btn-success btn-sm"
+                                                    onclick="salvarCadastroPassageiroRapido(${i})">
+                                                <i class="bi bi-save me-1"></i>Salvar e selecionar
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="row">
@@ -1118,6 +1165,12 @@
             for (let i = 1; i <= numPassageirosACadastrar; i++) {
                 document.getElementById(`passageiroCpf_${i}`).addEventListener('input', function() {
                     Utils.aplicarMascaraCPF(this);
+                });
+                document.getElementById(`novoPassageiroCpf_${i}`).addEventListener('input', function() {
+                    Utils.aplicarMascaraCPF(this);
+                });
+                document.getElementById(`novoPassageiroTelefone_${i}`).addEventListener('input', function() {
+                    Utils.aplicarMascaraTelefone(this);
                 });
             }
         }
@@ -1175,6 +1228,59 @@
             // preenche os campos de nome e CPF automaticamente
             document.getElementById(`passageiroNome_${index}`).value = passageiro.nome;
             document.getElementById(`passageiroCpf_${index}`).value = passageiro.cpf || '';
+        }
+
+        function abrirCadastroPassageiroRapido(index) {
+            const bloco = document.getElementById(`cadastroPassageiroRapido_${index}`);
+            if (!bloco) return;
+
+            const nomeAtual = document.getElementById(`passageiroNome_${index}`).value;
+            document.getElementById(`novoPassageiroNome_${index}`).value = nomeAtual || '';
+            bloco.style.display = 'block';
+            document.getElementById(`novoPassageiroNome_${index}`).focus();
+        }
+
+        function cancelarCadastroPassageiroRapido(index) {
+            const bloco = document.getElementById(`cadastroPassageiroRapido_${index}`);
+            if (!bloco) return;
+
+            bloco.style.display = 'none';
+            document.getElementById(`novoPassageiroNome_${index}`).value = '';
+            document.getElementById(`novoPassageiroCpf_${index}`).value = '';
+            document.getElementById(`novoPassageiroNascimento_${index}`).value = '';
+            document.getElementById(`novoPassageiroTelefone_${index}`).value = '';
+            document.getElementById(`novoPassageiroEmail_${index}`).value = '';
+        }
+
+        function salvarCadastroPassageiroRapido(index) {
+            const nome = document.getElementById(`novoPassageiroNome_${index}`).value.trim();
+            const cpf = document.getElementById(`novoPassageiroCpf_${index}`).value.trim();
+
+            if (!nome) {
+                alert('Informe o nome completo do passageiro.');
+                document.getElementById(`novoPassageiroNome_${index}`).focus();
+                return;
+            }
+
+            if (cpf && !Utils.validarCPF(cpf)) {
+                alert('CPF inválido.');
+                document.getElementById(`novoPassageiroCpf_${index}`).focus();
+                return;
+            }
+
+            const passageiro = StorageManager.addPessoa({
+                tipo: 'passageiro',
+                nome,
+                cpf,
+                dataNascimento: document.getElementById(`novoPassageiroNascimento_${index}`).value,
+                telefone: document.getElementById(`novoPassageiroTelefone_${index}`).value,
+                email: document.getElementById(`novoPassageiroEmail_${index}`).value
+            });
+
+            carregarPassageirosCache();
+            selecionarPassageiro(index, passageiro.id);
+            cancelarCadastroPassageiroRapido(index);
+            Utils.showSuccess('Passageiro cadastrado e selecionado na venda.');
         }
 
         // Fecha as listas de passageiro ao clicar fora
