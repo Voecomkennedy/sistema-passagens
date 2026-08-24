@@ -426,6 +426,15 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row mt-2">
+                                <div class="col-md-8">
+                                    <label class="form-label" for="nomeHotelPacote">Nome do hotel</label>
+                                    <input type="text" class="form-control" id="nomeHotelPacote"
+                                           placeholder="Ex: Hotel Plaza Kansas City"
+                                           oninput="sincronizarHotelPacote()">
+                                    <small class="text-muted">Opcional. Ao preencher, o item Hotel será marcado automaticamente.</small>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Dados do Voo -->
@@ -597,28 +606,34 @@
                         <!-- Valores Financeiros -->
                         <h6 class="mb-3 mt-4"><i class="bi bi-cash-stack me-2"></i>Valores Financeiros</h6>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Valor de Venda (R$) *</label>
                                 <input type="text" inputmode="numeric" class="form-control" id="valorVenda" required placeholder="0,00"
                                        oninput="Utils.aplicarMascaraMoeda(this); calcularMargem();">
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Valor de Custo (R$) *</label>
-                                <input type="text" inputmode="numeric" class="form-control" id="valorCusto" required placeholder="0,00"
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Lucro da Venda (R$) *</label>
+                                <input type="text" inputmode="numeric" class="form-control" id="valorLucro" required placeholder="0,00"
                                        oninput="Utils.aplicarMascaraMoeda(this); calcularMargem();">
+                                <small class="text-muted">Informe diretamente quanto você lucrou.</small>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Valor das Milhas (R$)</label>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Custo Calculado (R$)</label>
+                                <input type="text" class="form-control bg-light" id="valorCusto" readonly tabindex="-1" aria-readonly="true">
+                                <small class="text-muted">Venda menos lucro. Salvo para manter os relatórios atuais.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Valor pago no milheiro (R$)</label>
                                 <input type="text" inputmode="numeric" class="form-control" id="valorMilhas" placeholder="0,00"
                                        oninput="Utils.aplicarMascaraMoeda(this);">
-                                <small class="text-muted">Quanto pagou pelas milhas</small>
+                                <small class="text-muted">Somente informativo. Não entra em nenhuma somatória.</small>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-12 mb-3">
                                 <div class="alert alert-info">
-                                    <strong>Lucro:</strong> <span id="lucroCalculado">R$ 0,00</span> |
+                                    <strong>Lucro informado:</strong> <span id="lucroCalculado">R$ 0,00</span> |
                                     <strong>Margem:</strong> <span id="margemCalculada">0%</span>
                                 </div>
                             </div>
@@ -714,7 +729,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="js/aeroportos-data.js?v=7"></script>
+    <script src="js/aeroportos-data.js?v=10"></script>
     <script src="js/storage.js?v=9"></script>
     <script src="js/utils.js?v=9"></script>
 
@@ -728,13 +743,14 @@
         function filtrarAeroportos(texto) {
             if (!texto || texto.length < 2) return [];
 
-            const busca = texto.toLowerCase();
-            return aeroportos.filter(aeroporto => {
-                return aeroporto.codigo.toLowerCase().includes(busca) ||
-                       aeroporto.nome.toLowerCase().includes(busca) ||
-                       aeroporto.aeroporto.toLowerCase().includes(busca) ||
-                       aeroporto.pais.toLowerCase().includes(busca);
-            }).slice(0, 15); // Limitar a 15 resultados
+            const busca = normalizarTextoAeroporto(texto);
+            return aeroportos.filter(aeroporto => [
+                aeroporto.codigo,
+                aeroporto.nome,
+                aeroporto.aeroporto,
+                aeroporto.pais
+            ].some(valor => normalizarTextoAeroporto(valor).includes(busca)))
+                .slice(0, 15); // Limitar a 15 resultados
         }
 
         // Mostrar sugestões de aeroportos
@@ -921,6 +937,12 @@
             }
         }
 
+        function sincronizarHotelPacote() {
+            if (document.getElementById('nomeHotelPacote').value.trim()) {
+                document.getElementById('pacoteIncluiHotel').checked = true;
+            }
+        }
+
         function obterItensPacoteVenda() {
             return {
                 aereo: document.getElementById('pacoteIncluiAereo').checked,
@@ -941,6 +963,7 @@
             document.getElementById('pacoteIncluiVeiculo').checked = false;
             document.getElementById('pacoteIncluiAssentos').checked = false;
             document.getElementById('pacoteIncluiPasseios').checked = false;
+            document.getElementById('nomeHotelPacote').value = '';
             toggleTipoVenda();
         }
 
@@ -955,6 +978,7 @@
             document.getElementById('pacoteIncluiVeiculo').checked = !!itens.veiculo;
             document.getElementById('pacoteIncluiAssentos').checked = !!itens.assentos;
             document.getElementById('pacoteIncluiPasseios').checked = !!itens.passeios;
+            document.getElementById('nomeHotelPacote').value = venda.nomeHotel || '';
             toggleTipoVenda();
         }
 
@@ -964,7 +988,7 @@
             const itens = venda.itensPacote || {};
             const labels = [];
             if (itens.aereo !== false) labels.push('Aéreo');
-            if (itens.hotel) labels.push('Hotel');
+            if (itens.hotel) labels.push(venda.nomeHotel ? `Hotel: ${venda.nomeHotel}` : 'Hotel');
             if (itens.seguro) labels.push('Seguro viagem');
             if (itens.veiculo) labels.push('Aluguel de veículo');
             if (itens.assentos) labels.push('Assentos marcados');
@@ -1051,7 +1075,8 @@
 
             // Valores - usar o valor calculado da cotação
             document.getElementById('valorVenda').value = Utils.numeroParaMoeda(cotacao.valorTotalPix);
-            document.getElementById('valorCusto').value = ''; // Usuário precisa preencher
+            document.getElementById('valorLucro').value = ''; // Usuário informa o lucro desejado
+            calcularMargem();
 
             // Passageiros
             const totalPassageiros = (cotacao.adultos || 0) + (cotacao.criancas || 0) + (cotacao.bebes || 0);
@@ -1713,12 +1738,27 @@
             atualizarCamposLinksRastreamento([]);
             toggleParcelas();
             toggleDataVenda();
+            calcularMargem();
         }
 
         // Calcular margem em tempo real
         function calcularMargem() {
-            const valorVenda = Utils.moedaParaNumero(document.getElementById('valorVenda').value);
-            const valorCusto = Utils.moedaParaNumero(document.getElementById('valorCusto').value);
+            const campoVenda = document.getElementById('valorVenda');
+            const campoLucro = document.getElementById('valorLucro');
+            const campoCusto = document.getElementById('valorCusto');
+            const vendaCentavos = StorageManager.numeroParaCentavos(campoVenda.value);
+            const lucroCentavos = StorageManager.numeroParaCentavos(campoLucro.value);
+            const lucroMaiorQueVenda = lucroCentavos > vendaCentavos;
+            const custoCentavos = lucroMaiorQueVenda ? 0 : vendaCentavos - lucroCentavos;
+            const valorVenda = StorageManager.centavosParaNumero(vendaCentavos);
+            const lucro = StorageManager.centavosParaNumero(lucroCentavos);
+
+            campoLucro.setCustomValidity(
+                lucroMaiorQueVenda ? 'O lucro não pode ser maior que o valor da venda.' : ''
+            );
+            campoCusto.value = Utils.numeroParaMoeda(
+                StorageManager.centavosParaNumero(custoCentavos)
+            );
 
             // Aplicar regras de parcelamento quando o valor mudar
             const formaPagamento = document.getElementById('formaPagamento').value;
@@ -1726,8 +1766,7 @@
                 aplicarRegrasParcelas();
             }
 
-            const lucro = Utils.calcularLucro(valorVenda, valorCusto);
-            const margem = Utils.calcularMargemLucro(valorVenda, valorCusto);
+            const margem = valorVenda > 0 ? (lucro / valorVenda * 100) : 0;
 
             document.getElementById('lucroCalculado').textContent = Utils.formatCurrency(lucro);
             document.getElementById('margemCalculada').textContent = Utils.formatMargemLucro(margem);
@@ -1788,7 +1827,13 @@
 
                 // Valores
                 document.getElementById('valorVenda').value = Utils.numeroParaMoeda(venda.valorVenda);
-                document.getElementById('valorCusto').value = Utils.numeroParaMoeda(venda.valorCusto);
+                const lucroRegistrado = Number.isFinite(Number(venda.valorLucro))
+                    ? Number(venda.valorLucro)
+                    : StorageManager.centavosParaNumero(
+                        StorageManager.numeroParaCentavos(venda.valorVenda) -
+                        StorageManager.numeroParaCentavos(venda.valorCusto)
+                    );
+                document.getElementById('valorLucro').value = Utils.numeroParaMoeda(lucroRegistrado);
                 document.getElementById('valorMilhas').value = venda.valorMilhas ? Utils.numeroParaMoeda(venda.valorMilhas) : '';
                 document.getElementById('formaPagamento').value = venda.formaPagamento;
                 document.getElementById('observacoes').value = venda.observacoes || '';
@@ -1848,6 +1893,7 @@
         // Salvar venda
         function salvarVenda() {
             const form = document.getElementById('formVenda');
+            calcularMargem();
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
@@ -1899,6 +1945,9 @@
             const venda = {
                 tipoVenda: tipoVenda,
                 itensPacote: tipoVenda === 'pacote' ? obterItensPacoteVenda() : {},
+                nomeHotel: tipoVenda === 'pacote'
+                    ? document.getElementById('nomeHotelPacote').value.trim()
+                    : '',
                 localizadores: obterLocalizadores(),
                 numeroCompra: document.getElementById('numeroCompra').value.toUpperCase() || '',
                 clienteId: document.getElementById('clienteId').value,
@@ -1924,9 +1973,19 @@
                 fornecedorId: document.getElementById('fornecedorId').value,
                 fornecedorId2: document.getElementById('fornecedorId2').value,
                 numeroVoo: document.getElementById('numeroVoo').value.toUpperCase(),
-                valorVenda: Utils.moedaParaNumero(document.getElementById('valorVenda').value),
-                valorCusto: Utils.moedaParaNumero(document.getElementById('valorCusto').value),
-                valorMilhas: Utils.moedaParaNumero(document.getElementById('valorMilhas').value),
+                valorVenda: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('valorVenda').value)
+                ),
+                valorLucro: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('valorLucro').value)
+                ),
+                valorCusto: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('valorCusto').value)
+                ),
+                // Campo exclusivamente informativo: preço pago por mil milhas.
+                valorMilhas: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('valorMilhas').value)
+                ),
                 formaPagamento: document.getElementById('formaPagamento').value,
                 parcelas: parseInt(document.getElementById('parcelas').value) || 1,
                 observacoes: document.getElementById('observacoes').value,
@@ -2187,51 +2246,14 @@
                     y += 5;
                 }
 
-                // Mapeamento de códigos IATA para nomes completos de aeroportos
-                const aeroportos = {
-                    'GRU': 'São Paulo, Guarulhos',
-                    'CGH': 'São Paulo, Congonhas',
-                    'VCP': 'Campinas, Viracopos',
-                    'GIG': 'Rio de Janeiro, Galeão',
-                    'SDU': 'Rio de Janeiro, Santos Dumont',
-                    'BSB': 'Brasília',
-                    'CNF': 'Belo Horizonte, Confins',
-                    'SSA': 'Salvador',
-                    'REC': 'Recife',
-                    'FOR': 'Fortaleza',
-                    'POA': 'Porto Alegre',
-                    'CWB': 'Curitiba',
-                    'FLN': 'Florianópolis',
-                    'MAO': 'Manaus',
-                    'BEL': 'Belém',
-                    'NAT': 'Natal',
-                    'MCZ': 'Maceió',
-                    'THE': 'Teresina',
-                    'JPA': 'João Pessoa',
-                    'AJU': 'Aracaju',
-                    'VIX': 'Vitória',
-                    'CGB': 'Cuiabá',
-                    'GYN': 'Goiânia',
-                    'MCO': 'Orlando, Estados Unidos',
-                    'MIA': 'Miami, Estados Unidos',
-                    'JFK': 'Nova York, Estados Unidos',
-                    'LAX': 'Los Angeles, Estados Unidos',
-                    'LIS': 'Lisboa, Portugal',
-                    'MAD': 'Madrid, Espanha',
-                    'CDG': 'Paris, França',
-                    'LHR': 'Londres, Reino Unido',
-                    'FCO': 'Roma, Itália',
-                    'EZE': 'Buenos Aires, Argentina',
-                    'SCL': 'Santiago, Chile',
-                    'LIM': 'Lima, Peru',
-                    'BOG': 'Bogotá, Colômbia',
-                    'MEX': 'Cidade do México, México',
-                    'CUN': 'Cancún, México',
-                    'PTY': 'Cidade do Panamá, Panamá'
+                const formatarAeroporto = codigo => {
+                    const encontrado = aeroportos.find(aeroporto => aeroporto.codigo === codigo.toUpperCase());
+                    return encontrado
+                        ? `${encontrado.nome}, ${encontrado.aeroporto}`
+                        : codigo;
                 };
-
-                const origem = aeroportos[venda.origem.toUpperCase()] || venda.origem;
-                const destino = aeroportos[venda.destino.toUpperCase()] || venda.destino;
+                const origem = formatarAeroporto(venda.origem);
+                const destino = formatarAeroporto(venda.destino);
 
                 doc.text(`Itinerario: ${origem} - ${destino}`, 12, y);
                 y += 5;

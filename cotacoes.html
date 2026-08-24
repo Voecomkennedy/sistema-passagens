@@ -536,7 +536,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="js/aeroportos-data.js?v=7"></script>
+    <script src="js/aeroportos-data.js?v=10"></script>
     <script src="js/storage.js?v=8"></script>
     <script src="js/utils.js?v=8"></script>
 
@@ -1728,13 +1728,14 @@
         function filtrarAeroportos(texto) {
             if (!texto || texto.length < 2) return [];
 
-            const busca = texto.toLowerCase();
-            return aeroportos.filter(aeroporto => {
-                return aeroporto.codigo.toLowerCase().includes(busca) ||
-                       aeroporto.nome.toLowerCase().includes(busca) ||
-                       aeroporto.aeroporto.toLowerCase().includes(busca) ||
-                       aeroporto.pais.toLowerCase().includes(busca);
-            }).slice(0, 15);
+            const busca = normalizarTextoAeroporto(texto);
+            return aeroportos.filter(aeroporto => [
+                aeroporto.codigo,
+                aeroporto.nome,
+                aeroporto.aeroporto,
+                aeroporto.pais
+            ].some(valor => normalizarTextoAeroporto(valor).includes(busca)))
+                .slice(0, 15);
         }
 
         function selecionarAeroportoCotacao(inputId, sugestoesId, codigo) {
