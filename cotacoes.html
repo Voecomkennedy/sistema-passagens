@@ -537,8 +537,8 @@
 
     <!-- Custom JS -->
     <script src="js/aeroportos-data.js?v=10"></script>
-    <script src="js/storage.js?v=8"></script>
-    <script src="js/utils.js?v=8"></script>
+    <script src="js/storage.js?v=10"></script>
+    <script src="js/utils.js?v=10"></script>
 
     <script>
         let modalCotacao;
@@ -546,7 +546,7 @@
         let aeroportos = AEROPORTOS_IATA;
 
         // Inicializar
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('app:ready', () => {
             modalCotacao = new bootstrap.Modal(document.getElementById('modalCotacao'));
             carregarCotacoes();
 
@@ -1053,19 +1053,19 @@
 
                 html += `
                     <tr>
-                        <td>${Utils.formatDate(cotacao.dataCriacao.split('T')[0])}</td>
-                        <td>${cotacao.nomeCliente}</td>
-                        <td>${cotacao.origem} → ${cotacao.destino}</td>
-                        <td>${cotacao.companhiaAerea}</td>
-                        <td>${cotacao.totalPassageiros} pax</td>
-                        <td>${Utils.formatCurrency(cotacao.valorTotalPix)}</td>
+                        <td>${Utils.escapeHTML(Utils.formatDate(String(cotacao.dataCriacao || '').split('T')[0]))}</td>
+                        <td>${Utils.escapeHTML(cotacao.nomeCliente)}</td>
+                        <td>${Utils.escapeHTML(cotacao.origem)} → ${Utils.escapeHTML(cotacao.destino)}</td>
+                        <td>${Utils.escapeHTML(cotacao.companhiaAerea)}</td>
+                        <td>${Utils.escapeHTML(cotacao.totalPassageiros)} pax</td>
+                        <td>${Utils.escapeHTML(Utils.formatCurrency(cotacao.valorTotalPix))}</td>
                         <td>${statusBadge[cotacao.status] || statusBadge['aberta']}</td>
                         <td>
-                            <i class="bi bi-file-pdf action-icon" style="color: #dc3545;" onclick="gerarPDFCotacao('${cotacao.id}')" title="Gerar PDF"></i>
-                            <i class="bi bi-whatsapp action-icon" style="color: #25D366;" onclick="copiarParaWhatsApp('${cotacao.id}')" title="Copiar para WhatsApp"></i>
-                            ${cotacao.status === 'aberta' ? `<i class="bi bi-arrow-right-circle action-icon" style="color: #28a745;" onclick="converterParaVenda('${cotacao.id}')" title="Converter para Venda"></i>` : ''}
-                            ${cotacao.status === 'aberta' ? `<i class="bi bi-x-circle action-icon" style="color: #dc3545;" onclick="marcarComoPerdida('${cotacao.id}')" title="Marcar como Perdida"></i>` : ''}
-                            <i class="bi bi-trash action-icon delete" onclick="excluirCotacao('${cotacao.id}')" title="Excluir"></i>
+                            <i class="bi bi-file-pdf action-icon" style="color: #dc3545;" onclick="gerarPDFCotacao(${Utils.literalJSSeguro(cotacao.id)})" title="Gerar PDF"></i>
+                            <i class="bi bi-whatsapp action-icon" style="color: #25D366;" onclick="copiarParaWhatsApp(${Utils.literalJSSeguro(cotacao.id)})" title="Copiar para WhatsApp"></i>
+                            ${cotacao.status === 'aberta' ? `<i class="bi bi-arrow-right-circle action-icon" style="color: #28a745;" onclick="converterParaVenda(${Utils.literalJSSeguro(cotacao.id)})" title="Converter para Venda"></i>` : ''}
+                            ${cotacao.status === 'aberta' ? `<i class="bi bi-x-circle action-icon" style="color: #dc3545;" onclick="marcarComoPerdida(${Utils.literalJSSeguro(cotacao.id)})" title="Marcar como Perdida"></i>` : ''}
+                            <i class="bi bi-trash action-icon delete" onclick="excluirCotacao(${Utils.literalJSSeguro(cotacao.id)})" title="Excluir"></i>
                         </td>
                     </tr>
                 `;
@@ -1632,7 +1632,7 @@
             modal.innerHTML = `
                 <div style="background:white;padding:20px;border-radius:8px;max-width:600px;width:90%;">
                     <h5>Copie o texto abaixo para o WhatsApp:</h5>
-                    <textarea id="textoParaCopiar" style="width:100%;height:300px;font-family:monospace;font-size:12px;padding:10px;border:1px solid #ddd;border-radius:4px;">${texto}</textarea>
+                    <textarea id="textoParaCopiar" style="width:100%;height:300px;font-family:monospace;font-size:12px;padding:10px;border:1px solid #ddd;border-radius:4px;">${Utils.escapeHTML(texto)}</textarea>
                     <div style="margin-top:10px;text-align:right;">
                         <button onclick="document.getElementById('textoParaCopiar').select();document.execCommand('copy');alert('Texto copiado!');this.parentElement.parentElement.parentElement.remove();" class="btn btn-primary">Copiar</button>
                         <button onclick="this.parentElement.parentElement.parentElement.remove();" class="btn btn-secondary">Fechar</button>
@@ -1713,10 +1713,10 @@
             resultados.forEach(aeroporto => {
                 const aeroportoTexto = aeroporto.aeroporto !== aeroporto.nome ? `, ${aeroporto.aeroporto}` : '';
                 html += `
-                    <div class="autocomplete-item" onclick="selecionarAeroportoCotacao('${inputId}', '${sugestoesId}', '${aeroporto.codigo}')">
-                        <span class="codigo">${aeroporto.codigo}</span>
-                        <span class="cidade">${aeroporto.nome}${aeroportoTexto}</span>
-                        <span class="pais">- ${aeroporto.pais}</span>
+                    <div class="autocomplete-item" onclick="selecionarAeroportoCotacao(${Utils.literalJSSeguro(inputId)}, ${Utils.literalJSSeguro(sugestoesId)}, ${Utils.literalJSSeguro(aeroporto.codigo)})">
+                        <span class="codigo">${Utils.escapeHTML(aeroporto.codigo)}</span>
+                        <span class="cidade">${Utils.escapeHTML(aeroporto.nome + aeroportoTexto)}</span>
+                        <span class="pais">- ${Utils.escapeHTML(aeroporto.pais)}</span>
                     </div>
                 `;
             });
@@ -1784,16 +1784,10 @@
     </style>
     <!-- CLOUD-AUTH: integracao com a nuvem (Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/cloud-sync.js?v=7"></script>
-    <script>
-        // Protege a pagina (exige login) e liga a sincronizacao com a nuvem.
-        (async () => {
-            const ok = await Auth.proteger();
-            if (!ok) return; // ja redirecionou pro login
-            await CloudSync.init();
-        })();
-    </script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
 </body>
 </html>

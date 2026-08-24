@@ -91,13 +91,21 @@ function atualizarPreview() {
     const ciaKey = val('f_cia');
     const logoImg = document.getElementById('pv_logoImg');
     const logoBox = document.getElementById('pv_logoBox');
+    logoBox.replaceChildren();
     if (ciaKey === 'OUTRA' || !cia.logo) {
         // "Outra": mostra o nome escrito em vez de logo
         const nomeOutra = (val('f_ciaOutraNome') || 'COMPANHIA').toUpperCase();
-        logoImg.style.display = 'none';
-        logoBox.innerHTML = `<span style="font-weight:800;font-size:18px;color:${val('f_cor') || '#002071'}">${nomeOutra}</span>`;
+        const nome = document.createElement('span');
+        nome.style.cssText = `font-weight:800;font-size:18px;color:${val('f_cor') || '#002071'}`;
+        nome.textContent = nomeOutra;
+        logoBox.appendChild(nome);
     } else {
-        logoBox.innerHTML = `<img id="pv_logoImg" src="${cia.logo}" alt="${cia.nome}" style="height:26px;width:auto;display:block;" />`;
+        const imagem = document.createElement('img');
+        imagem.id = 'pv_logoImg';
+        imagem.src = cia.logo;
+        imagem.alt = cia.nome;
+        imagem.style.cssText = 'height:26px;width:auto;display:block;';
+        logoBox.appendChild(imagem);
     }
     setText('pv_loc', (val('f_localizador') || '').toUpperCase());
 
@@ -259,9 +267,9 @@ function buscarVenda(termo) {
         const rota = `${v.origem || '?'} → ${v.destino || '?'}`;
         const data = v.dataEmbarque ? Utils.formatDate(v.dataEmbarque) : '';
         return `<button type="button" class="list-group-item list-group-item-action"
-                        onclick="preencherDeVenda('${v.id}')">
-            <strong>${loc}</strong> · ${cliente}<br>
-            <small class="text-muted">${rota} ${data ? '· ' + data : ''}</small>
+                        onclick="preencherDeVenda(${Utils.literalJSSeguro(v.id)})">
+            <strong>${Utils.escapeHTML(loc)}</strong> · ${Utils.escapeHTML(cliente)}<br>
+            <small class="text-muted">${Utils.escapeHTML(rota)} ${data ? '· ' + Utils.escapeHTML(data) : ''}</small>
         </button>`;
     }).join('');
     lista.style.display = 'block';
@@ -386,8 +394,8 @@ function buscarPassageiroCartao(termo) {
     }
     lista.innerHTML = resultados.map(p =>
         `<button type="button" class="list-group-item list-group-item-action"
-                 onclick="selecionarPassageiroCartao('${p.id}')">
-            <strong>${p.nome}</strong>${p.cpf ? ` <small class="text-muted">- ${Utils.formatCPF(p.cpf)}</small>` : ''}
+                 onclick="selecionarPassageiroCartao(${Utils.literalJSSeguro(p.id)})">
+            <strong>${Utils.escapeHTML(p.nome)}</strong>${p.cpf ? ` <small class="text-muted">- ${Utils.escapeHTML(Utils.formatCPF(p.cpf))}</small>` : ''}
         </button>`
     ).join('');
     lista.style.display = 'block';

@@ -13,8 +13,17 @@ const Auth = {
 
     // Retorna o usuário logado (ou null)
     async getUser() {
-        const session = await this.getSession();
-        return session ? session.user : null;
+        const client = getSupabaseClient();
+        if (!client) return null;
+
+        // getUser consulta o servidor de autenticação e valida o token.
+        // Não usar apenas os dados locais da sessão para autorizar uma página.
+        const { data, error } = await client.auth.getUser();
+        if (error) {
+            console.warn('Não foi possível validar o usuário:', error.message);
+            return null;
+        }
+        return data ? data.user : null;
     },
 
     // Faz login com e-mail e senha
@@ -43,8 +52,11 @@ const Auth = {
         if (client) await client.auth.signOut();
         // Limpa o cache local de dados do app (cada conta baixa os seus ao logar)
         try {
-            ['emissao_vendas', 'emissao_pessoas', 'emissao_pacotes', 'emissao_cotacoes']
-                .forEach(chave => localStorage.removeItem(chave));
+            [
+                'emissao_vendas', 'emissao_pessoas', 'emissao_pacotes', 'emissao_cotacoes',
+                'emissao_cloud_sync_meta_v2', 'emissao_cloud_sync_ultimo_conflito',
+                'emissao_cloud_sync_usuario_local'
+            ].forEach(chave => localStorage.removeItem(chave));
         } catch (e) { /* ignora */ }
         window.location.href = 'login.html';
     },
@@ -52,8 +64,8 @@ const Auth = {
     // Protege uma página: se não estiver logado, manda pro login.
     // Use no topo de cada página interna.
     async proteger() {
-        const session = await this.getSession();
-        if (!session) {
+        const user = await this.getUser();
+        if (!user) {
             window.location.href = 'login.html';
             return false;
         }

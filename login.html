@@ -146,8 +146,8 @@
 
     <!-- Supabase + scripts do sistema -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
 
     <script>
         const form = document.getElementById('formLogin');
@@ -172,8 +172,8 @@
 
         // Se já estiver logado, vai direto pro Dashboard
         (async () => {
-            const session = await Auth.getSession();
-            if (session) window.location.href = 'index.html';
+            const user = await Auth.getUser();
+            if (user) window.location.href = 'index.html';
         })();
 
         form.addEventListener('submit', async (e) => {

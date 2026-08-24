@@ -3,6 +3,40 @@
 const Utils = {
     // ========== FORMATAÇÃO ==========
 
+    escapeHTML(valor) {
+        return (valor === null || valor === undefined ? '' : String(valor))
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    // Literal JavaScript seguro para handlers legados montados em HTML.
+    // JSON.stringify escapa o conteúdo; escapeHTML protege o atributo HTML externo.
+    literalJSSeguro(valor) {
+        return this.escapeHTML(JSON.stringify(String(valor ?? '')));
+    },
+
+    normalizarURLSegura(valor) {
+        try {
+            const url = new URL(String(valor || '').trim());
+            return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+        } catch {
+            return '';
+        }
+    },
+
+    abrirURLSegura(valor) {
+        const url = this.normalizarURLSegura(valor);
+        if (!url) {
+            this.showError('Link inválido. Use apenas endereço iniciado por http:// ou https://.');
+            return false;
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return true;
+    },
+
     formatCurrency(value) {
         const num = parseFloat(value) || 0;
         return num.toLocaleString('pt-BR', {

@@ -512,11 +512,12 @@ const StorageManager = {
     }
 };
 
-// Migrar dados antigos automaticamente ao carregar
+// Migrar dados antigos somente depois que o usuário foi validado e os dados
+// corretos da conta foram sincronizados para este navegador.
 if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('app:ready', () => {
         StorageManager.migrarDadosAntigos();
-    });
+    }, { once: true });
 }
 
 // Tornar disponível globalmente

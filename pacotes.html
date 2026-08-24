@@ -856,10 +856,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Storage Manager -->
-    <script src="js/storage.js?v=8"></script>
+    <script src="js/storage.js?v=10"></script>
 
     <!-- Utils -->
-    <script src="js/utils.js?v=8"></script>
+    <script src="js/utils.js?v=10"></script>
 
     <!-- Aeroportos Database -->
     <script src="js/aeroportos-data.js?v=10"></script>
@@ -872,7 +872,7 @@
         let modalPacote = null;
 
         // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('app:ready', function() {
             carregarClientes();
             carregarFornecedores();
             carregarCompanhias();
@@ -963,10 +963,10 @@
                     }
 
                     dropdown.innerHTML = resultados.map(aeroporto => `
-                        <div class="autocomplete-item" onclick="selecionarAeroporto('${campoId}', '${aeroporto.codigo}')">
-                            <span class="codigo">${aeroporto.codigo}</span>
-                            <span class="cidade">${aeroporto.cidade}</span>
-                            <span class="pais">- ${aeroporto.pais}</span>
+                        <div class="autocomplete-item" onclick="selecionarAeroporto(${Utils.literalJSSeguro(campoId)}, ${Utils.literalJSSeguro(aeroporto.codigo)})">
+                            <span class="codigo">${Utils.escapeHTML(aeroporto.codigo)}</span>
+                            <span class="cidade">${Utils.escapeHTML(aeroporto.cidade)}</span>
+                            <span class="pais">- ${Utils.escapeHTML(aeroporto.pais)}</span>
                         </div>
                     `).join('');
 
@@ -1137,9 +1137,9 @@
 
             tbody.innerHTML = passageiros.map((p, index) => `
                 <tr>
-                    <td>${p.nome}</td>
-                    <td>${p.documento}</td>
-                    <td>${p.eticket}</td>
+                    <td>${Utils.escapeHTML(p.nome)}</td>
+                    <td>${Utils.escapeHTML(p.documento)}</td>
+                    <td>${Utils.escapeHTML(p.eticket)}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-danger" onclick="removerPassageiro(${index})">
                             <i class="bi bi-trash"></i>
@@ -1429,7 +1429,9 @@
                 document.getElementById('toggleDataVenda').checked = false;
                 alternarDataVenda();
                 const data = Utils.parseLocalDate(pacote.dataVenda);
-                document.getElementById('dataVenda').value = data.toISOString().split('T')[0];
+                if (data && !isNaN(data.getTime())) {
+                    document.getElementById('dataVenda').value = Utils.dataHoraLocalParaInputs(data).data;
+                }
             }
 
             atualizarTabelaPassageiros();
@@ -1461,9 +1463,9 @@
             if (busca) {
                 pacotes = pacotes.filter(p => {
                     const cliente = StorageManager.getClienteById(p.clienteId);
-                    const nomeCliente = cliente ? cliente.nome.toLowerCase() : '';
-                    const voucher = p.numeroVoucher.toLowerCase();
-                    const destino = p.vooIda?.trecho1?.destino?.toLowerCase() || '';
+                    const nomeCliente = String(cliente?.nome || '').toLowerCase();
+                    const voucher = String(p.numeroVoucher || '').toLowerCase();
+                    const destino = String(p.vooIda?.trecho1?.destino || '').toLowerCase();
 
                     return nomeCliente.includes(busca) || voucher.includes(busca) || destino.includes(busca);
                 });
@@ -1483,6 +1485,7 @@
 
                 pacotes = pacotes.filter(p => {
                     const dataVenda = Utils.parseLocalDate(p.dataVenda || p.dataCadastro);
+                    if (!dataVenda || isNaN(dataVenda.getTime())) return false;
                     dataVenda.setHours(0, 0, 0, 0);
 
                     switch(periodo) {
@@ -1508,9 +1511,11 @@
             pacotes.sort((a, b) => {
                 switch(ordenacao) {
                     case 'recente':
-                        return new Date(b.dataCadastro) - new Date(a.dataCadastro);
+                        return (Utils.parseLocalDate(b.dataVenda || b.dataCadastro)?.getTime() || 0) -
+                               (Utils.parseLocalDate(a.dataVenda || a.dataCadastro)?.getTime() || 0);
                     case 'antigo':
-                        return new Date(a.dataCadastro) - new Date(b.dataCadastro);
+                        return (Utils.parseLocalDate(a.dataVenda || a.dataCadastro)?.getTime() || 0) -
+                               (Utils.parseLocalDate(b.dataVenda || b.dataCadastro)?.getTime() || 0);
                     case 'valor-desc':
                         return (b.financeiro?.valorVenda || 0) - (a.financeiro?.valorVenda || 0);
                     case 'valor-asc':
@@ -1550,18 +1555,18 @@
 
                 return `
                     <tr>
-                        <td>${pacote.numeroVoucher}</td>
-                        <td>${nomeCliente}</td>
-                        <td>${destino}</td>
-                        <td>${checkin}</td>
-                        <td>${checkout}</td>
-                        <td>${valor}</td>
-                        <td><span class="badge ${statusClass}">${pacote.status}</span></td>
+                        <td>${Utils.escapeHTML(pacote.numeroVoucher)}</td>
+                        <td>${Utils.escapeHTML(nomeCliente)}</td>
+                        <td>${Utils.escapeHTML(destino)}</td>
+                        <td>${Utils.escapeHTML(checkin)}</td>
+                        <td>${Utils.escapeHTML(checkout)}</td>
+                        <td>${Utils.escapeHTML(valor)}</td>
+                        <td><span class="badge ${statusClass}">${Utils.escapeHTML(pacote.status)}</span></td>
                         <td>
-                            <button class="btn btn-sm btn-primary" onclick="editarPacote('${pacote.id}')">
+                            <button class="btn btn-sm btn-primary" onclick="editarPacote(${Utils.literalJSSeguro(pacote.id)})">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="excluirPacote('${pacote.id}')">
+                            <button class="btn btn-sm btn-danger" onclick="excluirPacote(${Utils.literalJSSeguro(pacote.id)})">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -1572,16 +1577,10 @@
     </script>
     <!-- CLOUD-AUTH: integracao com a nuvem (Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/cloud-sync.js?v=7"></script>
-    <script>
-        // Protege a pagina (exige login) e liga a sincronizacao com a nuvem.
-        (async () => {
-            const ok = await Auth.proteger();
-            if (!ok) return; // ja redirecionou pro login
-            await CloudSync.init();
-        })();
-    </script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
 </body>
 </html>

@@ -245,15 +245,15 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="js/storage.js?v=8"></script>
-    <script src="js/utils.js?v=8"></script>
+    <script src="js/storage.js?v=10"></script>
+    <script src="js/utils.js?v=10"></script>
 
     <script>
         let modalCliente;
         let clienteEditandoId = null;
 
         // Inicializar
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('app:ready', () => {
             modalCliente = new bootstrap.Modal(document.getElementById('modalCliente'));
             carregarClientes();
 
@@ -434,20 +434,20 @@
                             <div class="card-body">
                                 <h5 class="card-title">
                                     <i class="bi bi-person-circle me-2 text-primary"></i>
-                                    ${cliente.nome}
+                                    ${Utils.escapeHTML(cliente.nome)}
                                 </h5>
                                 <hr>
                                 <p class="card-text mb-2">
                                     <strong><i class="bi bi-credit-card me-2"></i>CPF:</strong>
-                                    ${Utils.formatCPF(cliente.cpf)}
+                                    ${Utils.escapeHTML(Utils.formatCPF(cliente.cpf))}
                                 </p>
                                 <p class="card-text mb-2">
                                     <strong><i class="bi bi-envelope me-2"></i>Email:</strong>
-                                    ${cliente.email || 'Não informado'}
+                                    ${Utils.escapeHTML(cliente.email || 'Não informado')}
                                 </p>
                                 <p class="card-text mb-2">
                                     <strong><i class="bi bi-telephone me-2"></i>Telefone:</strong>
-                                    ${Utils.formatPhone(cliente.telefone)}
+                                    ${Utils.escapeHTML(Utils.formatPhone(cliente.telefone))}
                                 </p>
                                 <p class="card-text mb-2">
                                     <strong><i class="bi bi-cart me-2"></i>Vendas:</strong>
@@ -455,15 +455,15 @@
                                 </p>
                                 ${cliente.observacoes ? `
                                     <p class="card-text mb-2">
-                                        <small class="text-muted">${cliente.observacoes}</small>
+                                        <small class="text-muted">${Utils.escapeHTML(cliente.observacoes)}</small>
                                     </p>
                                 ` : ''}
                             </div>
                             <div class="card-footer bg-transparent">
-                                <button class="btn btn-sm btn-primary" onclick="abrirModalCliente('${cliente.id}')">
+                                <button class="btn btn-sm btn-primary" onclick="abrirModalCliente(${Utils.literalJSSeguro(cliente.id)})">
                                     <i class="bi bi-pencil me-1"></i>Editar
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="excluirCliente('${cliente.id}')">
+                                <button class="btn btn-sm btn-danger" onclick="excluirCliente(${Utils.literalJSSeguro(cliente.id)})">
                                     <i class="bi bi-trash me-1"></i>Excluir
                                 </button>
                             </div>
@@ -477,16 +477,10 @@
     </script>
     <!-- CLOUD-AUTH: integracao com a nuvem (Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/cloud-sync.js?v=7"></script>
-    <script>
-        // Protege a pagina (exige login) e liga a sincronizacao com a nuvem.
-        (async () => {
-            const ok = await Auth.proteger();
-            if (!ok) return; // ja redirecionou pro login
-            await CloudSync.init();
-        })();
-    </script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
 </body>
 </html>

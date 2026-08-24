@@ -191,8 +191,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="js/storage.js?v=8"></script>
-    <script src="js/utils.js?v=8"></script>
+    <script src="js/storage.js?v=10"></script>
+    <script src="js/utils.js?v=10"></script>
 
     <script>
         let periodoAtual = 'hoje';
@@ -201,7 +201,7 @@
         let intervalId;
 
         // Inicializar
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('app:ready', () => {
             modalDetalhes = new bootstrap.Modal(document.getElementById('modalDetalhes'));
             carregarVoos();
 
@@ -307,6 +307,7 @@
                 const horas = tempo.horas;
                 const alertClass = Utils.getAlertClass(horas);
                 const countdownClass = Utils.getCountdownClass(horas);
+                const linkSeguro = Utils.normalizarURLSegura(venda.linkRastreamento);
 
                 let statusIcon = '';
                 let statusText = '';
@@ -330,33 +331,33 @@
                             </div>
                             <div class="col-md-5">
                                 <div class="mb-1">
-                                    <strong style="font-size: 1.1rem;">${Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A')}</strong>
+                                    <strong style="font-size: 1.1rem;">${Utils.escapeHTML(Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A'))}</strong>
                                     ${statusText}
                                 </div>
                                 <div class="mb-1">
                                     <i class="bi bi-person me-1"></i>
-                                    <strong>${cliente ? cliente.nome : 'N/A'}</strong>
+                                    <strong>${Utils.escapeHTML(cliente ? cliente.nome : 'N/A')}</strong>
                                 </div>
                                 <div>
                                     <i class="bi bi-geo-alt me-1"></i>
-                                    ${venda.origem} → ${venda.destino}
-                                    ${venda.numeroVoo ? `<span class="badge bg-secondary ms-2">${venda.numeroVoo}</span>` : ''}
+                                    ${Utils.escapeHTML(venda.origem)} → ${Utils.escapeHTML(venda.destino)}
+                                    ${venda.numeroVoo ? `<span class="badge bg-secondary ms-2">${Utils.escapeHTML(venda.numeroVoo)}</span>` : ''}
                                 </div>
                                 ${fornecedor ? `
                                     <div class="mt-1">
                                         <i class="bi bi-building me-1"></i>
-                                        <small>${fornecedor.nome}</small>
+                                        <small>${Utils.escapeHTML(fornecedor.nome)}</small>
                                     </div>
                                 ` : ''}
                             </div>
                             <div class="col-md-3 text-center">
                                 <div class="mb-1">
                                     <i class="bi bi-calendar3 me-1"></i>
-                                    ${Utils.formatDate(venda.dataEmbarque)}
+                                    ${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))}
                                 </div>
                                 <div>
                                     <i class="bi bi-clock me-1"></i>
-                                    ${venda.horaEmbarque}
+                                    ${Utils.escapeHTML(venda.horaEmbarque)}
                                 </div>
                             </div>
                             <div class="col-md-3 text-center">
@@ -365,12 +366,12 @@
                                 </div>
                                 <small class="text-muted">até o embarque</small>
                                 <div class="mt-2">
-                                    ${venda.linkRastreamento ? `
-                                        <a href="${venda.linkRastreamento}" target="_blank" class="btn btn-sm btn-info me-1" title="Rastrear voo">
+                                    ${linkSeguro ? `
+                                        <a href="${Utils.escapeHTML(linkSeguro)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-info me-1" title="Rastrear voo">
                                             <i class="bi bi-link-45deg me-1"></i>Rastrear
                                         </a>
                                     ` : ''}
-                                    <button class="btn btn-sm btn-primary" onclick="verDetalhes('${venda.id}')">
+                                    <button class="btn btn-sm btn-primary" onclick="verDetalhes(${Utils.literalJSSeguro(venda.id)})">
                                         <i class="bi bi-info-circle me-1"></i>Detalhes
                                     </button>
                                 </div>
@@ -394,6 +395,7 @@
             const margem = Utils.calcularMargemLucro(venda.valorVenda, venda.valorCusto);
             const lucro = Utils.calcularLucro(venda.valorVenda, venda.valorCusto);
             const margemClass = Utils.getMargemClass(margem);
+            const linkSeguro = Utils.normalizarURLSegura(venda.linkRastreamento);
 
             const detalhesHTML = `
                 <div class="row">
@@ -402,41 +404,41 @@
                         <table class="table table-sm">
                             <tr>
                                 <th>Localizador:</th>
-                                <td><strong>${Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A')}</strong></td>
+                                <td><strong>${Utils.escapeHTML(Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A'))}</strong></td>
                             </tr>
                             <tr>
                                 <th>Origem:</th>
-                                <td>${venda.origem}</td>
+                                <td>${Utils.escapeHTML(venda.origem)}</td>
                             </tr>
                             <tr>
                                 <th>Destino:</th>
-                                <td>${venda.destino}</td>
+                                <td>${Utils.escapeHTML(venda.destino)}</td>
                             </tr>
                             <tr>
                                 <th>Data:</th>
-                                <td>${Utils.formatDate(venda.dataEmbarque)}</td>
+                                <td>${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))}</td>
                             </tr>
                             <tr>
                                 <th>Hora:</th>
-                                <td>${venda.horaEmbarque}</td>
+                                <td>${Utils.escapeHTML(venda.horaEmbarque)}</td>
                             </tr>
                             ${venda.numeroVoo ? `
                             <tr>
                                 <th>Voo:</th>
-                                <td>${venda.numeroVoo}</td>
+                                <td>${Utils.escapeHTML(venda.numeroVoo)}</td>
                             </tr>
                             ` : ''}
                             ${fornecedor ? `
                             <tr>
                                 <th>Companhia:</th>
-                                <td>${fornecedor.nome}</td>
+                                <td>${Utils.escapeHTML(fornecedor.nome)}</td>
                             </tr>
                             ` : ''}
-                            ${venda.linkRastreamento ? `
+                            ${linkSeguro ? `
                             <tr>
                                 <th>Rastreamento:</th>
                                 <td>
-                                    <a href="${venda.linkRastreamento}" target="_blank" class="btn btn-sm btn-info">
+                                    <a href="${Utils.escapeHTML(linkSeguro)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-info">
                                         <i class="bi bi-box-arrow-up-right me-1"></i>Acompanhar Voo
                                     </a>
                                 </td>
@@ -451,19 +453,19 @@
                         <table class="table table-sm">
                             <tr>
                                 <th>Nome:</th>
-                                <td>${cliente.nome}</td>
+                                <td>${Utils.escapeHTML(cliente.nome)}</td>
                             </tr>
                             <tr>
                                 <th>CPF:</th>
-                                <td>${Utils.formatCPF(cliente.cpf)}</td>
+                                <td>${Utils.escapeHTML(Utils.formatCPF(cliente.cpf))}</td>
                             </tr>
                             <tr>
                                 <th>Email:</th>
-                                <td>${cliente.email || 'Não informado'}</td>
+                                <td>${Utils.escapeHTML(cliente.email || 'Não informado')}</td>
                             </tr>
                             <tr>
                                 <th>Telefone:</th>
-                                <td>${Utils.formatPhone(cliente.telefone)}</td>
+                                <td>${Utils.escapeHTML(Utils.formatPhone(cliente.telefone))}</td>
                             </tr>
                         </table>
                         ` : '<p class="text-muted">Cliente não encontrado</p>'}
@@ -509,7 +511,7 @@
                 <div class="row">
                     <div class="col-12">
                         <h6><i class="bi bi-note-sticky me-2"></i>Observações</h6>
-                        <p>${venda.observacoes}</p>
+                        <p>${Utils.escapeHTML(venda.observacoes)}</p>
                     </div>
                 </div>
                 ` : ''}
@@ -528,16 +530,10 @@
     </script>
     <!-- CLOUD-AUTH: integracao com a nuvem (Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/cloud-sync.js?v=7"></script>
-    <script>
-        // Protege a pagina (exige login) e liga a sincronizacao com a nuvem.
-        (async () => {
-            const ok = await Auth.proteger();
-            if (!ok) return; // ja redirecionou pro login
-            await CloudSync.init();
-        })();
-    </script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
 </body>
 </html>

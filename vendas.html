@@ -730,8 +730,8 @@
 
     <!-- Custom JS -->
     <script src="js/aeroportos-data.js?v=10"></script>
-    <script src="js/storage.js?v=9"></script>
-    <script src="js/utils.js?v=9"></script>
+    <script src="js/storage.js?v=10"></script>
+    <script src="js/utils.js?v=10"></script>
 
     <script>
         let modalVenda;
@@ -775,10 +775,10 @@
             resultados.forEach(aeroporto => {
                 const aeroportoTexto = aeroporto.aeroporto !== aeroporto.nome ? `, ${aeroporto.aeroporto}` : '';
                 html += `
-                    <div class="autocomplete-item" onclick="selecionarAeroporto('${inputId}', '${sugestoesId}', '${aeroporto.codigo}')">
-                        <span class="codigo">${aeroporto.codigo}</span>
-                        <span class="cidade">${aeroporto.nome}${aeroportoTexto}</span>
-                        <span class="pais">- ${aeroporto.pais}</span>
+                    <div class="autocomplete-item" onclick="selecionarAeroporto(${Utils.literalJSSeguro(inputId)}, ${Utils.literalJSSeguro(sugestoesId)}, ${Utils.literalJSSeguro(aeroporto.codigo)})">
+                        <span class="codigo">${Utils.escapeHTML(aeroporto.codigo)}</span>
+                        <span class="cidade">${Utils.escapeHTML(aeroporto.nome + aeroportoTexto)}</span>
+                        <span class="pais">- ${Utils.escapeHTML(aeroporto.pais)}</span>
                     </div>
                 `;
             });
@@ -840,7 +840,7 @@
         function abrirLinkRastreamento(index = 1) {
             const input = document.getElementById(index === 1 ? 'linkRastreamento' : `linkRastreamento_${index}`);
             const link = input ? input.value : '';
-            if (link && link.trim() !== '') window.open(link, '_blank');
+            if (link && link.trim() !== '') Utils.abrirURLSegura(link);
         }
 
         function obterLinksRastreamento() {
@@ -857,11 +857,7 @@
         }
 
         function escaparAtributoHtml(valor) {
-            return (valor || '')
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+            return Utils.escapeHTML(valor || '');
         }
 
         function atualizarCamposLinksRastreamento(links = null) {
@@ -913,7 +909,7 @@
 
         function abrirLinkRastreamentoVolta() {
             const link = document.getElementById('linkRastreamentoVolta').value;
-            if (link && link.trim() !== '') window.open(link, '_blank');
+            if (link && link.trim() !== '') Utils.abrirURLSegura(link);
         }
 
         function toggleFornecedor2() {
@@ -997,7 +993,7 @@
         }
 
         // Inicializar modal
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('app:ready', () => {
             modalVenda = new bootstrap.Modal(document.getElementById('modalVenda'));
             carregarVendas();
             carregarClientes();
@@ -1149,8 +1145,8 @@
 
             lista.innerHTML = resultados.map(c =>
                 `<button type="button" class="list-group-item list-group-item-action"
-                         onclick="selecionarCliente('${c.id}')">
-                    <strong>${c.nome}</strong>${c.cpf ? ` <small class="text-muted">- ${Utils.formatCPF(c.cpf)}</small>` : ''}
+                         onclick="selecionarCliente(${Utils.literalJSSeguro(c.id)})">
+                    <strong>${Utils.escapeHTML(c.nome)}</strong>${c.cpf ? ` <small class="text-muted">- ${Utils.escapeHTML(Utils.formatCPF(c.cpf))}</small>` : ''}
                 </button>`
             ).join('');
             lista.style.display = 'block';
@@ -1253,7 +1249,9 @@
         // Carregar fornecedores no select (apenas tipo 'fornecedor')
         function carregarFornecedores() {
             const fornecedores = StorageManager.getFornecedores();
-            const optionsHTML = fornecedores.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+            const optionsHTML = fornecedores.map(f =>
+                `<option value="${Utils.escapeHTML(f.id)}">${Utils.escapeHTML(f.nome)}</option>`
+            ).join('');
             const base = '<option value="">Nenhum (opcional)</option>' + optionsHTML;
 
             document.getElementById('fornecedorId').innerHTML = base;
@@ -1263,7 +1261,7 @@
         // Carregar companhias aéreas
         function carregarCompanhias() {
             const companhias = StorageManager.getCompanhias();
-            const optionsHTML = companhias.map(c => `<option value="${c.codigo}">${c.codigo} - ${c.nome}</option>`).join('');
+            const optionsHTML = companhias.map(c => `<option value="${Utils.escapeHTML(c.codigo)}">${Utils.escapeHTML(c.codigo)} - ${Utils.escapeHTML(c.nome)}</option>`).join('');
 
             const select = document.getElementById('companhiaAerea');
             select.innerHTML = '<option value="">Selecione a companhia</option>' + optionsHTML;
@@ -1540,8 +1538,8 @@
 
             lista.innerHTML = resultados.map(p =>
                 `<button type="button" class="list-group-item list-group-item-action"
-                         onclick="selecionarPassageiro(${index}, '${p.id}')">
-                    <strong>${p.nome}</strong>${p.cpf ? ` <small class="text-muted">- ${Utils.formatCPF(p.cpf)}</small>` : ''}
+                         onclick="selecionarPassageiro(${index}, ${Utils.literalJSSeguro(p.id)})">
+                    <strong>${Utils.escapeHTML(p.nome)}</strong>${p.cpf ? ` <small class="text-muted">- ${Utils.escapeHTML(Utils.formatCPF(p.cpf))}</small>` : ''}
                 </button>`
             ).join('');
             lista.style.display = 'block';
@@ -2493,15 +2491,17 @@
                 const margemClass = Utils.getMargemClass(Utils.calcularMargemLucro(venda.valorVenda, venda.valorCusto));
 
                 const voltaTexto = venda.dataVolta
-                    ? Utils.formatDate(venda.dataVolta) + (venda.companhiaAereaVolta ? ` <small class="badge bg-warning text-dark">${venda.companhiaAereaVolta}</small>` : '')
+                    ? Utils.escapeHTML(Utils.formatDate(venda.dataVolta)) + (venda.companhiaAereaVolta ? ` <small class="badge bg-warning text-dark">${Utils.escapeHTML(venda.companhiaAereaVolta)}</small>` : '')
                     : 'Só ida';
 
                 // Buscar nomes dos aeroportos
-                const aeroportoOrigem = aeroportos.find(a => a.codigo === venda.origem.toUpperCase());
-                const aeroportoDestino = aeroportos.find(a => a.codigo === venda.destino.toUpperCase());
+                const origemCodigo = String(venda.origem || '');
+                const destinoCodigo = String(venda.destino || '');
+                const aeroportoOrigem = aeroportos.find(a => a.codigo === origemCodigo.toUpperCase());
+                const aeroportoDestino = aeroportos.find(a => a.codigo === destinoCodigo.toUpperCase());
 
-                const nomeOrigem = aeroportoOrigem ? aeroportoOrigem.nome : venda.origem;
-                const nomeDestino = aeroportoDestino ? aeroportoDestino.nome : venda.destino;
+                const nomeOrigem = aeroportoOrigem ? aeroportoOrigem.nome : (origemCodigo || 'N/A');
+                const nomeDestino = aeroportoDestino ? aeroportoDestino.nome : (destinoCodigo || 'N/A');
 
                 // Formatar localizadores para exibição
                 let localizadoresDisplay;
@@ -2518,18 +2518,18 @@
 
                 html += `
                     <tr>
-                        <td><strong>${localizadoresDisplay}</strong>${tipoVendaBadge}</td>
-                        <td>${cliente ? cliente.nome : 'N/A'}</td>
-                        <td>${nomeOrigem} → ${nomeDestino}</td>
-                        <td>${Utils.formatDate(venda.dataEmbarque)}</td>
+                        <td><strong>${Utils.escapeHTML(localizadoresDisplay)}</strong>${tipoVendaBadge}</td>
+                        <td>${Utils.escapeHTML(cliente ? cliente.nome : 'N/A')}</td>
+                        <td>${Utils.escapeHTML(nomeOrigem)} → ${Utils.escapeHTML(nomeDestino)}</td>
+                        <td>${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))}</td>
                         <td>${voltaTexto}</td>
-                        <td>${venda.quantidadePassageiros} pax</td>
-                        <td>${Utils.formatCurrency(venda.valorVenda)}</td>
-                        <td class="${margemClass}">${Utils.formatCurrency(lucro)}</td>
+                        <td>${Utils.escapeHTML(venda.quantidadePassageiros)} pax</td>
+                        <td>${Utils.escapeHTML(Utils.formatCurrency(venda.valorVenda))}</td>
+                        <td class="${margemClass}">${Utils.escapeHTML(Utils.formatCurrency(lucro))}</td>
                         <td>
-                            <i class="bi bi-pencil-square action-icon edit" onclick="abrirModalVenda('${venda.id}')" title="Editar"></i>
-                            <i class="bi bi-file-pdf action-icon" style="color: #dc3545;" onclick="gerarPDF('${venda.id}')" title="Gerar PDF"></i>
-                            <i class="bi bi-trash action-icon delete" onclick="excluirVenda('${venda.id}')" title="Excluir"></i>
+                            <i class="bi bi-pencil-square action-icon edit" onclick="abrirModalVenda(${Utils.literalJSSeguro(venda.id)})" title="Editar"></i>
+                            <i class="bi bi-file-pdf action-icon" style="color: #dc3545;" onclick="gerarPDF(${Utils.literalJSSeguro(venda.id)})" title="Gerar PDF"></i>
+                            <i class="bi bi-trash action-icon delete" onclick="excluirVenda(${Utils.literalJSSeguro(venda.id)})" title="Excluir"></i>
                         </td>
                     </tr>
                 `;
@@ -2551,16 +2551,10 @@
     </script>
     <!-- CLOUD-AUTH: integracao com a nuvem (Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/cloud-sync.js?v=7"></script>
-    <script>
-        // Protege a pagina (exige login) e liga a sincronizacao com a nuvem.
-        (async () => {
-            const ok = await Auth.proteger();
-            if (!ok) return; // ja redirecionou pro login
-            await CloudSync.init();
-        })();
-    </script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
 </body>
 </html>

@@ -229,8 +229,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="js/storage.js?v=9"></script>
-    <script src="js/utils.js?v=8"></script>
+    <script src="js/storage.js?v=10"></script>
+    <script src="js/utils.js?v=10"></script>
 
     <script>
         // Atualizar estatísticas
@@ -289,9 +289,9 @@
                     <div class="checkin-alert ${alertClass} mb-2">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <strong>${Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A')}</strong> - ${cliente ? cliente.nome : 'Cliente não encontrado'}
+                                <strong>${Utils.escapeHTML(Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A'))}</strong> - ${Utils.escapeHTML(cliente ? cliente.nome : 'Cliente não encontrado')}
                                 <br>
-                                <small>${venda.origem} → ${venda.destino} | ${Utils.formatDate(venda.dataEmbarque)} às ${venda.horaEmbarque}</small>
+                                <small>${Utils.escapeHTML(venda.origem)} → ${Utils.escapeHTML(venda.destino)} | ${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))} às ${Utils.escapeHTML(venda.horaEmbarque)}</small>
                             </div>
                             <div class="text-end">
                                 <div class="countdown ${Utils.getCountdownClass(horasRestantes)}">
@@ -348,12 +348,12 @@
 
                 html += `
                     <tr>
-                        <td><strong>${Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A')}</strong></td>
-                        <td>${cliente ? cliente.nome : 'N/A'}</td>
-                        <td>${venda.origem} → ${venda.destino}</td>
-                        <td>${Utils.formatDate(venda.dataEmbarque)}</td>
-                        <td>${Utils.formatCurrency(venda.valorVenda)}</td>
-                        <td class="${margemClass}">${Utils.formatMargemLucro(margem)}</td>
+                        <td><strong>${Utils.escapeHTML(Array.isArray(venda.localizadores) ? venda.localizadores.join(' | ') : (venda.localizador || 'N/A'))}</strong></td>
+                        <td>${Utils.escapeHTML(cliente ? cliente.nome : 'N/A')}</td>
+                        <td>${Utils.escapeHTML(venda.origem)} → ${Utils.escapeHTML(venda.destino)}</td>
+                        <td>${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))}</td>
+                        <td>${Utils.escapeHTML(Utils.formatCurrency(venda.valorVenda))}</td>
+                        <td class="${margemClass}">${Utils.escapeHTML(Utils.formatMargemLucro(margem))}</td>
                     </tr>
                 `;
             });
@@ -375,43 +375,31 @@
             try { atualizarVendasRecentes(); } catch (e) { console.error('Erro em vendas recentes:', e); }
         }
 
-        // Atualizar countdown em tempo real (apenas os alertas, a cada 1s)
-        setInterval(() => {
-            try { atualizarAlertasCheckin(); } catch (e) { console.error(e); }
-        }, 1000);
-
-        // Reatualizar estatísticas e vendas recentes periodicamente (cobre alterações feitas em outras telas/abas)
-        setInterval(() => {
-            try { atualizarEstatisticas(); } catch (e) { console.error(e); }
-            try { atualizarVendasRecentes(); } catch (e) { console.error(e); }
-        }, 5000);
-
-        // Recarregar quando a aba voltar a ficar visível ou ganhar foco
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) atualizarDashboard();
-        });
-        window.addEventListener('focus', atualizarDashboard);
-        window.addEventListener('pageshow', atualizarDashboard);
-
-        // Carregar dados ao iniciar (cobre o caso de o DOM já estar pronto)
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', atualizarDashboard);
-        } else {
+        document.addEventListener('app:ready', () => {
             atualizarDashboard();
-        }
+
+            // Atualizações periódicas só começam depois da autenticação.
+            setInterval(() => {
+                try { atualizarAlertasCheckin(); } catch (e) { console.error(e); }
+            }, 1000);
+            setInterval(() => {
+                try { atualizarEstatisticas(); } catch (e) { console.error(e); }
+                try { atualizarVendasRecentes(); } catch (e) { console.error(e); }
+            }, 5000);
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) atualizarDashboard();
+            });
+            window.addEventListener('focus', atualizarDashboard);
+            window.addEventListener('pageshow', atualizarDashboard);
+        }, { once: true });
     </script>
     <!-- CLOUD-AUTH: integracao com a nuvem (Supabase) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/cloud-sync.js?v=7"></script>
-    <script>
-        // Protege a pagina (exige login) e liga a sincronizacao com a nuvem.
-        (async () => {
-            const ok = await Auth.proteger();
-            if (!ok) return; // ja redirecionou pro login
-            await CloudSync.init();
-        })();
-    </script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
 </body>
 </html>
