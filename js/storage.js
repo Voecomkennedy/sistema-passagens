@@ -77,6 +77,44 @@ const StorageManager = {
         return vendas.find(v => v.id === id);
     },
 
+    normalizarCodigoVenda(valor) {
+        return (valor || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    },
+
+    getCodigosVenda(venda) {
+        const codigos = [];
+        if (Array.isArray(venda.localizadores)) codigos.push(...venda.localizadores);
+        else if (venda.localizador) codigos.push(venda.localizador);
+        if (venda.localizadorVolta) codigos.push(venda.localizadorVolta);
+        if (Array.isArray(venda.passageiros)) {
+            venda.passageiros.forEach(p => {
+                if (p && p.localizador) codigos.push(p.localizador);
+            });
+        }
+        return [...new Set(codigos.map(c => this.normalizarCodigoVenda(c)).filter(Boolean))];
+    },
+
+    // Retorna suspeitas para o usuário decidir. Não bloqueia automaticamente,
+    // porque um mesmo PNR pode ser usado legitimamente em vendas separadas.
+    findPossiveisVendasDuplicadas(venda, ignorarId = null) {
+        const codigosNovos = new Set(this.getCodigosVenda(venda));
+        const numeroCompra = this.normalizarCodigoVenda(venda.numeroCompra);
+
+        return this.getVendas()
+            .filter(existente => String(existente.id) !== String(ignorarId || ''))
+            .map(existente => {
+                const codigosIguais = this.getCodigosVenda(existente)
+                    .filter(codigo => codigosNovos.has(codigo));
+                const compraIgual = numeroCompra &&
+                    numeroCompra === this.normalizarCodigoVenda(existente.numeroCompra);
+                const motivos = [];
+                if (codigosIguais.length) motivos.push(`localizador ${codigosIguais.join(', ')}`);
+                if (compraIgual) motivos.push(`número da compra ${numeroCompra}`);
+                return motivos.length ? { venda: existente, motivos } : null;
+            })
+            .filter(Boolean);
+    },
+
     // ========== PESSOAS (CLIENTES, PASSAGEIROS E FORNECEDORES) ==========
     getPessoas() {
         const data = localStorage.getItem(this.KEYS.PESSOAS);
@@ -350,13 +388,36 @@ const StorageManager = {
     },
 
     // ========== ESTATÍSTICAS ==========
+    numeroParaCentavos(valor) {
+        if (typeof valor === 'number') {
+            return Number.isFinite(valor) ? Math.round(valor * 100) : 0;
+        }
+
+        let texto = (valor || '').toString().trim().replace(/[^\d,.-]/g, '');
+        if (!texto) return 0;
+        if (texto.includes(',')) texto = texto.replace(/\./g, '').replace(',', '.');
+        const numero = Number(texto);
+        return Number.isFinite(numero) ? Math.round(numero * 100) : 0;
+    },
+
+    centavosParaNumero(centavos) {
+        return (parseInt(centavos, 10) || 0) / 100;
+    },
+
+    somarCampoEmCentavos(lista, obterValor) {
+        return (lista || []).reduce((total, item) =>
+            total + this.numeroParaCentavos(obterValor(item)), 0);
+    },
+
     // Calcula estatísticas para um conjunto arbitrário de vendas (ex.: vendas filtradas)
     calcularStatsPeriodo(vendas) {
         const lista = vendas || [];
         const totalVendas = lista.length;
-        const valorTotalVendas = lista.reduce((sum, v) => sum + (parseFloat(v.valorVenda) || 0), 0);
-        const valorTotalCusto = lista.reduce((sum, v) => sum + (parseFloat(v.valorCusto) || 0), 0);
-        const lucroTotal = valorTotalVendas - valorTotalCusto;
+        const vendasCentavos = this.somarCampoEmCentavos(lista, v => v.valorVenda);
+        const custosCentavos = this.somarCampoEmCentavos(lista, v => v.valorCusto);
+        const valorTotalVendas = this.centavosParaNumero(vendasCentavos);
+        const valorTotalCusto = this.centavosParaNumero(custosCentavos);
+        const lucroTotal = this.centavosParaNumero(vendasCentavos - custosCentavos);
         const margemLucroMedia = valorTotalVendas > 0 ? (lucroTotal / valorTotalVendas * 100) : 0;
 
         return {
@@ -365,6 +426,26 @@ const StorageManager = {
             valorTotalCusto,
             lucroTotal,
             margemLucroMedia
+        };
+    },
+
+    calcularStatsPacotes(pacotes = null) {
+        const todos = pacotes || this.getPacotes();
+        const ativos = todos.filter(p => (p.status || '').toString().toLowerCase() !== 'cancelado');
+        const vendasCentavos = this.somarCampoEmCentavos(ativos, p => p.financeiro?.valorVenda);
+        const custosCentavos = this.somarCampoEmCentavos(ativos, p => p.financeiro?.valorCusto);
+        const valorTotalVendas = this.centavosParaNumero(vendasCentavos);
+        const valorTotalCusto = this.centavosParaNumero(custosCentavos);
+        const lucroTotal = this.centavosParaNumero(vendasCentavos - custosCentavos);
+
+        return {
+            totalPacotes: todos.length,
+            totalPacotesAtivos: ativos.length,
+            totalPacotesCancelados: todos.length - ativos.length,
+            valorTotalVendas,
+            valorTotalCusto,
+            lucroTotal,
+            margemLucroMedia: valorTotalVendas > 0 ? (lucroTotal / valorTotalVendas * 100) : 0
         };
     },
 
@@ -378,9 +459,9 @@ const StorageManager = {
         const totalFornecedores = fornecedores.length;
 
         // Totais GERAIS (todas as vendas de todos os tempos)
-        const valorTotalGeral = vendas.reduce((sum, v) => sum + (parseFloat(v.valorVenda) || 0), 0);
-        const custoTotalGeral = vendas.reduce((sum, v) => sum + (parseFloat(v.valorCusto) || 0), 0);
-        const lucroTotalGeral = valorTotalGeral - custoTotalGeral;
+        const statsGeral = this.calcularStatsPeriodo(vendas);
+        const valorTotalGeral = statsGeral.valorTotalVendas;
+        const lucroTotalGeral = statsGeral.lucroTotal;
 
         // ===== VENDAS DO MÊS ATUAL (pela DATA DA VENDA, não do voo) =====
         const now = new Date();
@@ -403,10 +484,10 @@ const StorageManager = {
             return dv && dv.mes === mesAtual && dv.ano === anoAtual;
         });
 
-        const valorMes = vendasMesAtual.reduce((sum, v) => sum + (parseFloat(v.valorVenda) || 0), 0);
-        const custoMes = vendasMesAtual.reduce((sum, v) => sum + (parseFloat(v.valorCusto) || 0), 0);
-        const lucroMes = valorMes - custoMes;
-        const margemMes = valorMes > 0 ? (lucroMes / valorMes * 100) : 0;
+        const statsMes = this.calcularStatsPeriodo(vendasMesAtual);
+        const valorMes = statsMes.valorTotalVendas;
+        const lucroMes = statsMes.lucroTotal;
+        const margemMes = statsMes.margemLucroMedia;
 
         return {
             // Os campos abaixo (usados pelos cards do Dashboard) agora são DO MÊS ATUAL:

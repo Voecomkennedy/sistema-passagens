@@ -111,7 +111,7 @@
                             </div>
                             <div class="col-md-3 col-sm-6 mb-2">
                                 <div class="text-center p-2" style="background: rgba(201, 169, 97, 0.1); border-radius: 8px;">
-                                    <small style="color: var(--gray-400); font-weight: 600;">TOTAL EM VENDAS</small>
+                                    <small style="color: var(--gray-400); font-weight: 600;">TOTAL NO CADASTRO VENDAS</small>
                                     <h4 class="mt-1 mb-0" style="color: var(--secondary-color);" id="totalVendas">R$ 0,00</h4>
                                 </div>
                             </div>
@@ -129,9 +129,35 @@
                             </div>
                         </div>
 
+                        <div class="row mt-2">
+                            <div class="col-md-4 col-sm-6 mb-2">
+                                <div class="text-center p-2" style="background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                                    <small style="color: var(--gray-400); font-weight: 600;">PACOTES ATIVOS</small>
+                                    <h4 class="mt-1 mb-0" style="color: #3B82F6;" id="totalPacotes">0</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-sm-6 mb-2">
+                                <div class="text-center p-2" style="background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                                    <small style="color: var(--gray-400); font-weight: 600;">VENDAS EM PACOTES (SEPARADO)</small>
+                                    <h4 class="mt-1 mb-0" style="color: #3B82F6;" id="totalVendasPacotes">R$ 0,00</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-sm-6 mb-2">
+                                <div class="text-center p-2" style="background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+                                    <small style="color: var(--gray-400); font-weight: 600;">LUCRO DOS PACOTES (SEPARADO)</small>
+                                    <h4 class="mt-1 mb-0" style="color: var(--success-color);" id="lucroPacotes">R$ 0,00</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning mt-2 mb-0 py-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Os valores de Pacotes estão separados para evitar contagem dupla com vendas marcadas como pacote.
+                        </div>
+
                         <p class="text-muted mt-3 mb-0" style="font-size: 0.85rem;">
                             <i class="bi bi-clock-history me-1"></i>
-                            Último salvamento automático: <span id="ultimoSalvamento">Agora</span>
+                            Última atualização desta tela: <span id="ultimoSalvamento">Agora</span>
                         </p>
                     </div>
                 </div>
@@ -236,8 +262,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Scripts -->
-    <script src="js/utils.js?v=8"></script>
-    <script src="js/storage.js?v=8"></script>
+    <script src="js/utils.js?v=9"></script>
+    <script src="js/storage.js?v=9"></script>
 
     <script>
         // Atualizar estatísticas
@@ -245,19 +271,22 @@
             const vendas = StorageManager.getVendas();
             const pessoas = StorageManager.getPessoas();
             const cotacoes = StorageManager.getCotacoes();
+            const pacotes = StorageManager.getPacotes();
 
-            const totalVendas = vendas.reduce((sum, v) => sum + parseFloat(v.valorVenda || 0), 0);
-            const totalCusto = vendas.reduce((sum, v) => sum + parseFloat(v.valorCusto || 0), 0);
-            const lucroTotal = totalVendas - totalCusto;
+            const statsVendas = StorageManager.calcularStatsPeriodo(vendas);
+            const statsPacotes = StorageManager.calcularStatsPacotes(pacotes);
 
             const totalPassageiros = vendas.reduce((sum, v) => sum + parseInt(v.quantidadePassageiros || 0), 0);
 
-            const totalRegistros = vendas.length + pessoas.length + cotacoes.length;
+            const totalRegistros = vendas.length + pessoas.length + cotacoes.length + pacotes.length;
 
             document.getElementById('totalRegistros').textContent = totalRegistros;
-            document.getElementById('totalVendas').textContent = Utils.formatCurrency(totalVendas);
-            document.getElementById('lucroTotal').textContent = Utils.formatCurrency(lucroTotal);
+            document.getElementById('totalVendas').textContent = Utils.formatCurrency(statsVendas.valorTotalVendas);
+            document.getElementById('lucroTotal').textContent = Utils.formatCurrency(statsVendas.lucroTotal);
             document.getElementById('totalPassageiros').textContent = totalPassageiros;
+            document.getElementById('totalPacotes').textContent = statsPacotes.totalPacotesAtivos;
+            document.getElementById('totalVendasPacotes').textContent = Utils.formatCurrency(statsPacotes.valorTotalVendas);
+            document.getElementById('lucroPacotes').textContent = Utils.formatCurrency(statsPacotes.lucroTotal);
 
             // Data do último salvamento
             const agora = new Date();
@@ -270,13 +299,15 @@
                 const vendas = StorageManager.getVendas();
                 const pessoas = StorageManager.getPessoas();
                 const cotacoes = StorageManager.getCotacoes();
+                const pacotes = StorageManager.getPacotes();
 
                 const backup = {
-                    versao: '1.0',
+                    versao: '2.0',
                     dataExportacao: new Date().toISOString(),
                     dados: {
                         vendas: vendas,
                         pessoas: pessoas,
+                        pacotes: pacotes,
                         cotacoes: cotacoes
                     }
                 };
@@ -287,7 +318,7 @@
 
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `backup-passagens-${new Date().toISOString().split('T')[0]}.json`;
+                a.download = `backup-voecomkennedy-${Utils.dataHoraLocalParaInputs().data}.json`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -297,6 +328,61 @@
             } catch (error) {
                 console.error('Erro ao exportar backup:', error);
                 Utils.showError('Erro ao exportar backup. Tente novamente.');
+            }
+        }
+
+        function validarColecaoBackup(nome, valor, obrigatoria = true) {
+            if (valor === undefined && !obrigatoria) return null;
+            if (!Array.isArray(valor)) throw new Error(`${nome} precisa ser uma lista`);
+            if (valor.some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
+                throw new Error(`${nome} contém registro inválido`);
+            }
+            return valor;
+        }
+
+        function prepararDadosImportacao(backup) {
+            if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
+                throw new Error('Estrutura principal inválida');
+            }
+
+            // Aceita o backup da tela Backup (dados.*) e o export antigo do Dashboard.
+            const fonte = backup.dados && typeof backup.dados === 'object' ? backup.dados : backup;
+            const vendas = validarColecaoBackup('vendas', fonte.vendas);
+            const pessoas = validarColecaoBackup('pessoas', fonte.pessoas);
+            const pacotesArquivo = validarColecaoBackup('pacotes', fonte.pacotes, false);
+            const cotacoesArquivo = validarColecaoBackup('cotacoes', fonte.cotacoes, false);
+
+            return {
+                dados: {
+                    vendas,
+                    pessoas,
+                    // Backup antigo não conhecia essas coleções: preservar o que já existe é mais seguro.
+                    pacotes: pacotesArquivo === null ? StorageManager.getPacotes() : pacotesArquivo,
+                    cotacoes: cotacoesArquivo === null ? StorageManager.getCotacoes() : cotacoesArquivo
+                },
+                preservouPacotes: pacotesArquivo === null,
+                preservouCotacoes: cotacoesArquivo === null
+            };
+        }
+
+        function gravarDadosComRollback(dados) {
+            const pares = [
+                [StorageManager.KEYS.VENDAS, dados.vendas],
+                [StorageManager.KEYS.PESSOAS, dados.pessoas],
+                [StorageManager.KEYS.PACOTES, dados.pacotes],
+                [StorageManager.KEYS.COTACOES, dados.cotacoes]
+            ];
+            const anteriores = new Map(pares.map(([chave]) => [chave, localStorage.getItem(chave)]));
+            const serializados = pares.map(([chave, valor]) => [chave, JSON.stringify(valor)]);
+
+            try {
+                serializados.forEach(([chave, valor]) => localStorage.setItem(chave, valor));
+            } catch (erro) {
+                anteriores.forEach((valor, chave) => {
+                    if (valor === null) localStorage.removeItem(chave);
+                    else localStorage.setItem(chave, valor);
+                });
+                throw erro;
             }
         }
 
@@ -314,21 +400,16 @@
             reader.onload = function(e) {
                 try {
                     const backup = JSON.parse(e.target.result);
+                    const importacao = prepararDadosImportacao(backup);
+                    gravarDadosComRollback(importacao.dados);
 
-                    if (!backup.dados || !backup.dados.vendas || !backup.dados.pessoas) {
-                        throw new Error('Formato de backup inválido');
-                    }
-
-                    // Restaurar dados
-                    localStorage.setItem(StorageManager.KEYS.VENDAS, JSON.stringify(backup.dados.vendas));
-                    localStorage.setItem(StorageManager.KEYS.PESSOAS, JSON.stringify(backup.dados.pessoas));
-
-                    // Restaurar cotações se existirem no backup
-                    if (backup.dados.cotacoes) {
-                        localStorage.setItem(StorageManager.KEYS.COTACOES, JSON.stringify(backup.dados.cotacoes));
-                    }
-
-                    Utils.showSuccess('Backup importado com sucesso!');
+                    const avisos = [];
+                    if (importacao.preservouPacotes) avisos.push('pacotes atuais foram preservados');
+                    if (importacao.preservouCotacoes) avisos.push('cotações atuais foram preservadas');
+                    const complemento = avisos.length
+                        ? ` Arquivo antigo: ${avisos.join(' e ')}.`
+                        : '';
+                    Utils.showSuccess('Backup validado e importado com sucesso!' + complemento);
 
                     setTimeout(() => {
                         window.location.reload();

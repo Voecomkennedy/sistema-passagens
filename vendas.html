@@ -715,7 +715,7 @@
 
     <!-- Custom JS -->
     <script src="js/aeroportos-data.js?v=7"></script>
-    <script src="js/storage.js?v=8"></script>
+    <script src="js/storage.js?v=9"></script>
     <script src="js/utils.js?v=9"></script>
 
     <script>
@@ -1935,6 +1935,31 @@
                 dataVenda: dataVenda,
                 horaVenda: horaVenda
             };
+
+            const possiveisDuplicadas = StorageManager.findPossiveisVendasDuplicadas(
+                venda,
+                vendaEditandoId
+            );
+            if (possiveisDuplicadas.length) {
+                const pessoasPorId = new Map(
+                    StorageManager.getPessoas().map(pessoa => [String(pessoa.id), pessoa])
+                );
+                const resumo = possiveisDuplicadas.slice(0, 5).map(item => {
+                    const existente = item.venda;
+                    const cliente = pessoasPorId.get(String(existente.clienteId));
+                    const data = existente.dataVenda || (existente.dataCadastro || '').slice(0, 10) || 'sem data';
+                    return `• ${cliente?.nome || 'Cliente não identificado'} — ${data} — ${item.motivos.join(' e ')}`;
+                }).join('\n');
+                const restantes = possiveisDuplicadas.length > 5
+                    ? `\n...e mais ${possiveisDuplicadas.length - 5} possível(is) duplicidade(s).`
+                    : '';
+
+                const continuar = Utils.confirm(
+                    `ATENÇÃO: esta venda pode estar duplicada.\n\n${resumo}${restantes}\n\n` +
+                    'Confira os registros antes de continuar. Deseja salvar mesmo assim?'
+                );
+                if (!continuar) return;
+            }
 
             if (vendaEditandoId) {
                 StorageManager.updateVenda(vendaEditandoId, venda);
