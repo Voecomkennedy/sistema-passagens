@@ -52,6 +52,19 @@ const Utils = {
         return date.toLocaleString('pt-BR');
     },
 
+    // Retorna data/hora no fuso LOCAL para preencher inputs HTML.
+    // Não usar toISOString() aqui: depois das 21h em Goiás o UTC já está no dia seguinte.
+    dataHoraLocalParaInputs(date = new Date()) {
+        const valor = date instanceof Date ? date : new Date(date);
+        if (isNaN(valor.getTime())) return { data: '', hora: '' };
+
+        const pad = numero => String(numero).padStart(2, '0');
+        return {
+            data: `${valor.getFullYear()}-${pad(valor.getMonth() + 1)}-${pad(valor.getDate())}`,
+            hora: `${pad(valor.getHours())}:${pad(valor.getMinutes())}`
+        };
+    },
+
     formatCPF(cpf) {
         if (!cpf) return '';
         cpf = cpf.replace(/\D/g, '');

@@ -716,7 +716,7 @@
     <!-- Custom JS -->
     <script src="js/aeroportos-data.js?v=7"></script>
     <script src="js/storage.js?v=8"></script>
-    <script src="js/utils.js?v=8"></script>
+    <script src="js/utils.js?v=9"></script>
 
     <script>
         let modalVenda;
@@ -1651,25 +1651,68 @@
             const dataAutomatica = document.getElementById('dataVendaAutomatica').checked;
             const campoManual = document.getElementById('campoDataVendaManual');
             const infoAutomatica = document.getElementById('infoDataAutomatica');
+            const inputData = document.getElementById('dataVendaManual');
+            const inputHora = document.getElementById('horaVendaManual');
 
             if (dataAutomatica) {
                 campoManual.style.display = 'none';
                 infoAutomatica.style.display = 'block';
-                document.getElementById('dataVendaManual').required = false;
-                document.getElementById('horaVendaManual').required = false;
+                inputData.required = false;
+                inputHora.required = false;
             } else {
                 campoManual.style.display = 'flex';
                 infoAutomatica.style.display = 'none';
-                document.getElementById('dataVendaManual').required = true;
-                document.getElementById('horaVendaManual').required = true;
+                inputData.required = true;
+                inputHora.required = true;
 
-                // Preencher com data/hora atual por padrão
-                const agora = new Date();
-                const dataAtual = agora.toISOString().split('T')[0];
-                const horaAtual = agora.toTimeString().slice(0, 5);
-                document.getElementById('dataVendaManual').value = dataAtual;
-                document.getElementById('horaVendaManual').value = horaAtual;
+                // Só sugere o momento atual em um campo vazio. Na edição, preserva o original.
+                const agoraLocal = Utils.dataHoraLocalParaInputs();
+                if (!inputData.value) inputData.value = agoraLocal.data;
+                if (!inputHora.value) inputHora.value = agoraLocal.hora;
             }
+        }
+
+        function obterDataHoraOriginalVenda(venda) {
+            const dataInformada = String(venda.dataVenda || '');
+            const dataValida = /^(\d{4}-\d{2}-\d{2})/.exec(dataInformada);
+
+            if (dataValida) {
+                let hora = String(venda.horaVenda || '').slice(0, 5);
+                if (!hora && dataInformada.includes('T')) {
+                    hora = Utils.dataHoraLocalParaInputs(dataInformada).hora;
+                }
+                return { data: dataValida[1], hora: hora || '00:00' };
+            }
+
+            if (venda.dataCadastro) {
+                return Utils.dataHoraLocalParaInputs(venda.dataCadastro);
+            }
+
+            return Utils.dataHoraLocalParaInputs();
+        }
+
+        function prepararFormularioVendaLimpo() {
+            document.getElementById('formVenda').reset();
+            document.getElementById('vendaId').value = '';
+            limparLocalizadores();
+            document.getElementById('clienteId').value = '';
+            document.getElementById('buscaCliente').value = '';
+            document.getElementById('listaClientesResultado').style.display = 'none';
+            cancelarCadastroClienteRapido();
+            limparTipoVenda();
+            document.getElementById('companhiaDiferenteVolta').checked = false;
+            toggleCompanhiaVolta();
+            removerFornecedor2();
+            document.getElementById('camposPassageiros').innerHTML = '';
+            document.getElementById('lucroCalculado').textContent = 'R$ 0,00';
+            document.getElementById('margemCalculada').textContent = '0%';
+            document.getElementById('linkRastreamento').value = '';
+            document.getElementById('dataVendaManual').value = '';
+            document.getElementById('horaVendaManual').value = '';
+            document.getElementById('dataVendaAutomatica').checked = true;
+            atualizarCamposLinksRastreamento([]);
+            toggleParcelas();
+            toggleDataVenda();
         }
 
         // Calcular margem em tempo real
@@ -1694,6 +1737,7 @@
         // Abrir modal para nova venda
         function abrirModalVenda(vendaId = null) {
             vendaEditandoId = vendaId;
+            prepararFormularioVendaLimpo();
 
             if (vendaId) {
                 // Modo EDIÇÃO
@@ -1707,10 +1751,14 @@
 
                 // Preencher campos básicos
                 document.getElementById('vendaId').value = venda.id;
-                preencherLocalizadores(venda.localizadores || venda.localizador || []);
+                const localizadores = Array.isArray(venda.localizadores) && venda.localizadores.length
+                    ? venda.localizadores
+                    : (venda.localizador ? [venda.localizador] : []);
+                preencherLocalizadores(localizadores);
+                document.getElementById('numeroCompra').value = venda.numeroCompra || '';
                 definirClientePorId(venda.clienteId);
-                document.getElementById('clienteViaja').checked = venda.clienteViaja;
-                document.getElementById('quantidadePassageiros').value = venda.quantidadePassageiros;
+                document.getElementById('clienteViaja').checked = !!venda.clienteViaja;
+                document.getElementById('quantidadePassageiros').value = venda.quantidadePassageiros || 1;
                 preencherTipoVenda(venda);
 
                 // Dados do voo
@@ -1724,6 +1772,20 @@
                 document.getElementById('horaVolta').value = venda.horaVolta || '';
                 document.getElementById('fornecedorId').value = venda.fornecedorId || '';
 
+                // Dados opcionais da volta e segundo fornecedor
+                if (venda.companhiaAereaVolta) {
+                    document.getElementById('companhiaDiferenteVolta').checked = true;
+                    toggleCompanhiaVolta();
+                    document.getElementById('companhiaAereaVolta').value = venda.companhiaAereaVolta;
+                    document.getElementById('localizadorVolta').value = venda.localizadorVolta || '';
+                    document.getElementById('linkRastreamentoVolta').value = venda.linkRastreamentoVolta || '';
+                    toggleBotaoRastreamentoVolta();
+                }
+                if (venda.fornecedorId2) {
+                    toggleFornecedor2();
+                    document.getElementById('fornecedorId2').value = venda.fornecedorId2;
+                }
+
                 // Valores
                 document.getElementById('valorVenda').value = Utils.numeroParaMoeda(venda.valorVenda);
                 document.getElementById('valorCusto').value = Utils.numeroParaMoeda(venda.valorCusto);
@@ -1732,52 +1794,43 @@
                 document.getElementById('observacoes').value = venda.observacoes || '';
 
                 // Link de rastreamento
-                atualizarCamposLinksRastreamento(venda.linksRastreamento || [venda.linkRastreamento || '']);
+                const links = Array.isArray(venda.linksRastreamento) && venda.linksRastreamento.length
+                    ? venda.linksRastreamento
+                    : [venda.linkRastreamento || ''];
+                atualizarCamposLinksRastreamento(links);
 
                 // Parcelas
-                if (venda.formaPagamento === 'credito_parcelado') {
-                    document.getElementById('campoParcelas').style.display = 'block';
-                    document.getElementById('parcelas').value = venda.parcelas;
-                }
+                toggleParcelas();
+                document.getElementById('parcelas').value = venda.parcelas || '1';
+
+                // Em edição a data sempre parte do valor histórico, nunca do momento atual.
+                const dataHoraOriginal = obterDataHoraOriginalVenda(venda);
+                document.getElementById('dataVendaManual').value = dataHoraOriginal.data;
+                document.getElementById('horaVendaManual').value = dataHoraOriginal.hora;
+                document.getElementById('dataVendaAutomatica').checked = false;
+                toggleDataVenda();
 
                 // Gerar campos de passageiros
                 gerarCamposPassageiros();
 
                 // Preencher dados dos passageiros
-                setTimeout(() => {
-                    venda.passageiros.forEach((passageiro, index) => {
-                        const i = index + 1;
-                        document.getElementById(`passageiroNome_${i}`).value = passageiro.nome;
-                        document.getElementById(`passageiroCpf_${i}`).value = passageiro.cpf || '';
-                        if (passageiro.id) {
-                            document.getElementById(`passageiro_${i}`).value = passageiro.id;
-                        }
-                    });
-                }, 100);
+                (Array.isArray(venda.passageiros) ? venda.passageiros : []).forEach((passageiro, index) => {
+                    const i = index + 1;
+                    const nome = document.getElementById(`passageiroNome_${i}`);
+                    if (!nome) return;
+                    nome.value = passageiro.nome || '';
+                    document.getElementById(`passageiroCpf_${i}`).value = passageiro.cpf || '';
+                    document.getElementById(`passageiroLocalizador_${i}`).value = passageiro.localizador || '';
+                    document.getElementById(`passageiroBusca_${i}`).value =
+                        (passageiro.nome || '') + (passageiro.cpf ? ` - ${Utils.formatCPF(passageiro.cpf)}` : '');
+                    if (passageiro.id) document.getElementById(`passageiro_${i}`).value = passageiro.id;
+                });
 
                 // Calcular e mostrar margem
                 calcularMargem();
             } else {
                 // Modo NOVA VENDA
                 document.getElementById('tituloModal').innerHTML = '<i class="bi bi-plus-circle me-2"></i>Nova Venda';
-                document.getElementById('formVenda').reset();
-                limparLocalizadores(); // Limpar campos de localizadores dinâmicos
-                // Limpar busca de cliente (campo visível + valor escondido)
-                document.getElementById('clienteId').value = '';
-                document.getElementById('buscaCliente').value = '';
-                document.getElementById('listaClientesResultado').style.display = 'none';
-                cancelarCadastroClienteRapido();
-                limparTipoVenda();
-                document.getElementById('vendaId').value = '';
-                document.getElementById('companhiaDiferenteVolta').checked = false;
-                toggleCompanhiaVolta();
-                removerFornecedor2();
-                document.getElementById('lucroCalculado').textContent = 'R$ 0,00';
-                document.getElementById('margemCalculada').textContent = '0%';
-                document.getElementById('camposPassageiros').innerHTML = '';
-                document.getElementById('campoParcelas').style.display = 'none';
-                document.getElementById('linkRastreamento').value = '';
-                atualizarCamposLinksRastreamento([]);
             }
 
             modalVenda.show();
@@ -1832,9 +1885,9 @@
 
             if (dataAutomatica) {
                 // Usar data/hora atual
-                const agora = new Date();
-                dataVenda = agora.toISOString().split('T')[0];
-                horaVenda = agora.toTimeString().slice(0, 5);
+                const agoraLocal = Utils.dataHoraLocalParaInputs();
+                dataVenda = agoraLocal.data;
+                horaVenda = agoraLocal.hora;
             } else {
                 // Usar data/hora manual
                 dataVenda = document.getElementById('dataVendaManual').value;
@@ -1907,95 +1960,7 @@
 
         // Editar venda
         function editarVenda(id) {
-            const venda = StorageManager.getVendaById(id);
-            if (!venda) return;
-
-            // Preencher formulário com dados da venda
-            document.getElementById('vendaId').value = venda.id;
-            preencherLocalizadores(venda.localizadores || venda.localizador || []);
-            document.getElementById('numeroCompra').value = venda.numeroCompra || '';
-            definirClientePorId(venda.clienteId);
-            document.getElementById('origem').value = venda.origem;
-            document.getElementById('destino').value = venda.destino;
-            document.getElementById('dataEmbarque').value = venda.dataEmbarque;
-            document.getElementById('horaEmbarque').value = venda.horaEmbarque;
-            document.getElementById('dataVolta').value = venda.dataVolta || '';
-            document.getElementById('horaVolta').value = venda.horaVolta || '';
-            document.getElementById('companhiaAerea').value = venda.companhiaAerea;
-
-            // Companhia diferente na volta
-            if (venda.companhiaAereaVolta) {
-                document.getElementById('companhiaDiferenteVolta').checked = true;
-                toggleCompanhiaVolta();
-                document.getElementById('companhiaAereaVolta').value = venda.companhiaAereaVolta;
-                document.getElementById('localizadorVolta').value = venda.localizadorVolta || '';
-                document.getElementById('linkRastreamentoVolta').value = venda.linkRastreamentoVolta || '';
-                toggleBotaoRastreamentoVolta();
-            } else {
-                document.getElementById('companhiaDiferenteVolta').checked = false;
-                toggleCompanhiaVolta();
-            }
-
-            document.getElementById('fornecedorId').value = venda.fornecedorId || '';
-            if (venda.fornecedorId2) {
-                toggleFornecedor2();
-                document.getElementById('fornecedorId2').value = venda.fornecedorId2;
-            } else {
-                removerFornecedor2();
-            }
-            document.getElementById('numeroVoo').value = venda.numeroVoo || '';
-            atualizarCamposLinksRastreamento(venda.linksRastreamento || [venda.linkRastreamento || '']);
-            document.getElementById('valorCusto').value = Utils.numeroParaMoeda(venda.valorCusto);
-            document.getElementById('valorMilhas').value = venda.valorMilhas ? Utils.numeroParaMoeda(venda.valorMilhas) : '';
-            document.getElementById('valorVenda').value = Utils.numeroParaMoeda(venda.valorVenda);
-            document.getElementById('formaPagamento').value = venda.formaPagamento;
-            document.getElementById('parcelas').value = venda.parcelas || '';
-            document.getElementById('observacoes').value = venda.observacoes || '';
-            document.getElementById('quantidadePassageiros').value = venda.quantidadePassageiros;
-            document.getElementById('clienteViaja').checked = venda.clienteViaja;
-            preencherTipoVenda(venda);
-
-            // Preencher data da venda se existir
-            if (venda.dataVenda) {
-                document.getElementById('dataVendaAutomatica').checked = false;
-                document.getElementById('dataVendaManual').value = venda.dataVenda;
-                document.getElementById('horaVendaManual').value = venda.horaVenda || '00:00';
-                toggleDataVenda();
-            } else {
-                // Manter automático se não tiver data da venda
-                document.getElementById('dataVendaAutomatica').checked = true;
-                toggleDataVenda();
-            }
-
-            // Gerar campos de passageiros
-            gerarCamposPassageiros();
-
-            // Preencher dados dos passageiros
-            if (venda.passageiros && venda.passageiros.length > 0) {
-                venda.passageiros.forEach((p, i) => {
-                    const num = i + 1;
-                    document.getElementById(`passageiroNome_${num}`).value = p.nome;
-                    document.getElementById(`passageiroCpf_${num}`).value = p.cpf || '';
-                    document.getElementById(`passageiroLocalizador_${num}`).value = p.localizador || '';
-                    // Preenche o campo de busca visual também
-                    const buscaP = document.getElementById(`passageiroBusca_${num}`);
-                    if (buscaP) buscaP.value = p.nome + (p.cpf ? ` - ${Utils.formatCPF(p.cpf)}` : '');
-                    if (document.getElementById(`passageiroDataNascimento_${num}`)) {
-                        document.getElementById(`passageiroDataNascimento_${num}`).value = p.dataNascimento || '';
-                    }
-                    if (document.getElementById(`passageiroPassaporte_${num}`)) {
-                        document.getElementById(`passageiroPassaporte_${num}`).value = p.passaporte || '';
-                    }
-                });
-            }
-
-            // Mostrar modal
-            toggleParcelas();
-            const modalVenda = new bootstrap.Modal(document.getElementById('modalVenda'));
-            modalVenda.show();
-
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            abrirModalVenda(id);
         }
 
         // Gerar PDF da venda
@@ -2366,9 +2331,37 @@
             let vendas = StorageManager.getVendas();
 
             // Filtro de busca
-            const busca = document.getElementById('busca').value;
+            const busca = _normalizar(document.getElementById('busca').value).trim();
             if (busca) {
-                vendas = Utils.filtrarPorTexto(vendas, busca, ['localizador', 'origem', 'destino', 'numeroVoo']);
+                const pessoasPorId = new Map(
+                    StorageManager.getPessoas().map(pessoa => [String(pessoa.id), pessoa])
+                );
+
+                vendas = vendas.filter(venda => {
+                    const cliente = pessoasPorId.get(String(venda.clienteId));
+                    const passageiros = Array.isArray(venda.passageiros) ? venda.passageiros : [];
+                    const localizadores = Array.isArray(venda.localizadores)
+                        ? venda.localizadores
+                        : (venda.localizador ? [venda.localizador] : []);
+
+                    const camposPesquisaveis = [
+                        cliente?.nome,
+                        cliente?.cpf,
+                        ...localizadores,
+                        venda.localizadorVolta,
+                        venda.numeroCompra,
+                        venda.origem,
+                        venda.destino,
+                        venda.numeroVoo,
+                        ...passageiros.flatMap(passageiro => [
+                            passageiro.nome,
+                            passageiro.cpf,
+                            passageiro.localizador
+                        ])
+                    ];
+
+                    return camposPesquisaveis.some(valor => _normalizar(valor).includes(busca));
+                });
             }
 
             // Filtro de período
