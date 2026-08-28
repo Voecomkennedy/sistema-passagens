@@ -177,6 +177,75 @@ const StorageManager = {
         return this.getVendas().filter(venda => this.vendaPrecisaRevisaoLegado(venda));
     },
 
+    vendaAptaParaBalanco(venda) {
+        return !!venda && !venda.excluidaEm && !this.vendaPrecisaRevisaoLegado(venda);
+    },
+
+    calcularBalancoConfiavel(vendas = null) {
+        const lista = (vendas || this.getVendas()).filter(venda => !venda.excluidaEm);
+        const classificadas = lista.filter(venda => this.vendaAptaParaBalanco(venda));
+        const pendentes = lista.filter(venda => !this.vendaAptaParaBalanco(venda));
+        const resumos = classificadas.map(venda => ({
+            venda,
+            financeiro: this.obterResumoFinanceiroVenda(venda)
+        }));
+        const somarResumo = campo => resumos.reduce((total, item) =>
+            total + this.numeroParaCentavos(item.financeiro[campo]), 0);
+
+        const receitaProjetadaCentavos = somarResumo('receitaProjetada');
+        const custoLiquidoCentavos = somarResumo('custoLiquido');
+        const receitaRealizadaCentavos = somarResumo('receitaRealizada');
+        const lucroRealizadoCentavos = somarResumo('lucroRealizado');
+        const lucroProjetadoCentavos = receitaProjetadaCentavos - custoLiquidoCentavos;
+        const saldoAReceberCentavos = resumos.reduce((total, item) => {
+            const projetado = this.numeroParaCentavos(item.financeiro.receitaProjetada);
+            const realizado = this.numeroParaCentavos(item.financeiro.receitaRealizada);
+            return total + Math.max(0, projetado - realizado);
+        }, 0);
+        const valorForaBalancoCentavos = pendentes.reduce((total, venda) =>
+            total + this.numeroParaCentavos(venda.valorVenda), 0);
+
+        return {
+            totalRegistros: lista.length,
+            totalClassificadas: classificadas.length,
+            totalPendentes: pendentes.length,
+            coberturaPercentual: lista.length ? classificadas.length / lista.length * 100 : 0,
+            receitaProjetada: this.centavosParaNumero(receitaProjetadaCentavos),
+            custoLiquido: this.centavosParaNumero(custoLiquidoCentavos),
+            lucroProjetado: this.centavosParaNumero(lucroProjetadoCentavos),
+            receitaRealizada: this.centavosParaNumero(receitaRealizadaCentavos),
+            lucroRealizado: this.centavosParaNumero(lucroRealizadoCentavos),
+            saldoAReceber: this.centavosParaNumero(saldoAReceberCentavos),
+            valorForaBalanco: this.centavosParaNumero(valorForaBalancoCentavos),
+            margemProjetada: receitaProjetadaCentavos
+                ? lucroProjetadoCentavos / receitaProjetadaCentavos * 100
+                : 0,
+            margemRealizada: receitaRealizadaCentavos
+                ? lucroRealizadoCentavos / receitaRealizadaCentavos * 100
+                : 0,
+            classificadas,
+            pendentes
+        };
+    },
+
+    agruparBalancoPorMes(vendas = null) {
+        const classificadas = (vendas || this.getVendas())
+            .filter(venda => this.vendaAptaParaBalanco(venda));
+        const grupos = new Map();
+
+        classificadas.forEach(venda => {
+            const correspondencia = /^(\d{4})-(\d{2})/.exec(String(venda.dataVenda || ''));
+            if (!correspondencia) return;
+            const chave = `${correspondencia[1]}-${correspondencia[2]}`;
+            if (!grupos.has(chave)) grupos.set(chave, []);
+            grupos.get(chave).push(venda);
+        });
+
+        return [...grupos.entries()]
+            .sort(([mesA], [mesB]) => mesA.localeCompare(mesB))
+            .map(([mes, registros]) => ({ mes, ...this.calcularBalancoConfiavel(registros) }));
+    },
+
     revisarVendaLegada(id, dados) {
         const venda = this.getVendaById(id);
         if (!venda || venda.excluidaEm) return { ok: false, erro: 'Venda não encontrada.' };

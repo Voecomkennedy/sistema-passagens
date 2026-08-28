@@ -756,6 +756,187 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========================================
+   BALANÇO CONFIÁVEL - ETAPA 4B
+   ======================================== */
+
+.balance-workspace {
+    max-width: 1800px;
+}
+
+.balance-filter-card .form-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 5px;
+}
+
+.balance-trust-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.balance-trust-main,
+.balance-trust-aside {
+    padding: 20px 24px;
+}
+
+.balance-trust-aside {
+    background: #fff8e6;
+    border-left: 1px solid #f7d98b;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.balance-trust-aside > span,
+.balance-metric span {
+    color: var(--gray-600);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+}
+
+.balance-trust-aside > strong {
+    color: var(--gray-900);
+    font-size: 1.45rem;
+    line-height: 1.2;
+    margin: 3px 0;
+}
+
+.balance-trust-aside a {
+    color: #8a6500;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-top: 8px;
+    text-decoration: none;
+}
+
+.balance-confidence-badge {
+    align-self: flex-start;
+    background: #dff8eb;
+    border-radius: var(--radius-full);
+    color: #087f5b;
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 5px 10px;
+}
+
+.balance-metric {
+    margin-bottom: 0;
+    border-top: 3px solid var(--gray-300);
+}
+
+.balance-metric.emphasis {
+    border-top-color: var(--success-color);
+}
+
+.balance-metric.warning {
+    border-top-color: var(--warning-color);
+}
+
+.balance-metric .card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 128px;
+}
+
+.balance-metric strong {
+    color: var(--gray-900);
+    font-size: clamp(1.15rem, 1.6vw, 1.55rem);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin: 10px 0 6px;
+    word-break: break-word;
+}
+
+.balance-metric small {
+    color: var(--gray-500);
+    font-size: 0.7rem;
+    line-height: 1.35;
+    margin-top: auto;
+}
+
+.balance-bar-row {
+    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 88px minmax(80px, 1fr) 110px;
+    margin-bottom: 14px;
+}
+
+.balance-bar-row > span,
+.balance-bar-row > strong {
+    font-size: 0.74rem;
+}
+
+.balance-bar-row > strong {
+    text-align: right;
+}
+
+.balance-bar-track {
+    background: var(--gray-100);
+    border-radius: var(--radius-full);
+    height: 11px;
+    overflow: hidden;
+}
+
+.balance-bar {
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: inherit;
+    height: 100%;
+    min-width: 3px;
+}
+
+.balance-bar.negative {
+    background: linear-gradient(90deg, #ef4444, #fb7185);
+}
+
+.balance-detail-table th,
+.balance-detail-table td {
+    white-space: nowrap;
+}
+
+.methodology-card {
+    background: var(--gray-50);
+}
+
+.methodology-card p {
+    color: var(--gray-600);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin: 4px 0 0;
+}
+
+@media (max-width: 991px) {
+    .balance-trust-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .balance-trust-aside {
+        border-left: 0;
+        border-top: 1px solid #f7d98b;
+    }
+}
+
+@media (max-width: 576px) {
+    .balance-trust-main,
+    .balance-trust-aside {
+        padding: 16px;
+    }
+
+    .balance-bar-row {
+        grid-template-columns: 72px minmax(55px, 1fr) 90px;
+        gap: 7px;
+    }
+}
+
+/* ========================================
    ANIMATIONS
    ======================================== */
 

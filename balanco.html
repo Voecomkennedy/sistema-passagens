@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanço Confiável - Voecomkennedy</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css?v=10">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html"><i class="bi bi-airplane-fill me-2"></i>Voecomkennedy</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html"><i class="bi bi-house-fill"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="vendas.html"><i class="bi bi-cart-fill"></i> Vendas</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="balanco.html"><i class="bi bi-bar-chart-fill"></i> Balanço</a></li>
+                    <li class="nav-item"><a class="nav-link" href="cotacoes.html"><i class="bi bi-calculator-fill"></i> Cotações</a></li>
+                    <li class="nav-item"><a class="nav-link" href="pessoas.html"><i class="bi bi-people-fill"></i> Pessoas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="checkin.html"><i class="bi bi-clock-fill"></i> Check-in</a></li>
+                    <li class="nav-item"><a class="nav-link" href="cartao-embarque.html"><i class="bi bi-ticket-perforated-fill"></i> Cartão</a></li>
+                    <li class="nav-item"><a class="nav-link" href="backup.html"><i class="bi bi-cloud-arrow-down-fill"></i> Backup</a></li>
+                </ul>
+                <span class="navbar-text me-3" id="cloudStatus" style="font-size:0.82rem; white-space:nowrap;"></span>
+                <button class="btn btn-sm btn-outline-light" onclick="Auth.logout()"><i class="bi bi-box-arrow-right"></i> Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid py-3 balance-workspace">
+        <div class="page-heading mb-3">
+            <div>
+                <div class="section-kicker">Etapa 4B</div>
+                <h2 class="mb-1"><i class="bi bi-bar-chart-line me-2"></i>Balanço confiável</h2>
+                <p class="text-muted mb-0">Resultado comercial por data da venda, separado dos registros ainda não revisados.</p>
+            </div>
+            <button class="btn btn-outline-primary" type="button" id="exportarCsv" onclick="exportarBalanco()">
+                <i class="bi bi-filetype-csv me-1"></i>Exportar seleção
+            </button>
+        </div>
+
+        <section class="card balance-filter-card mb-3" aria-label="Filtros do balanço">
+            <div class="card-body">
+                <div class="row g-2 align-items-end">
+                    <div class="col-xl-3 col-md-6">
+                        <label class="form-label" for="periodoBalanco">Período da venda</label>
+                        <select class="form-select" id="periodoBalanco" onchange="ajustarPeriodo(); atualizarBalanco()">
+                            <option value="tudo">Todo o histórico</option>
+                            <option value="mes">Mês atual</option>
+                            <option value="mes_anterior">Mês anterior</option>
+                            <option value="ano">Ano atual</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-2 col-md-3 periodo-personalizado d-none">
+                        <label class="form-label" for="dataInicioBalanco">Data inicial</label>
+                        <input class="form-control" type="date" id="dataInicioBalanco" onchange="atualizarBalanco()">
+                    </div>
+                    <div class="col-xl-2 col-md-3 periodo-personalizado d-none">
+                        <label class="form-label" for="dataFimBalanco">Data final</label>
+                        <input class="form-control" type="date" id="dataFimBalanco" onchange="atualizarBalanco()">
+                    </div>
+                    <div class="col-xl-2 col-md-4">
+                        <label class="form-label" for="tipoBalanco">Tipo de venda</label>
+                        <select class="form-select" id="tipoBalanco" onchange="atualizarBalanco()">
+                            <option value="todos">Todas</option>
+                            <option value="passagem">Passagem</option>
+                            <option value="pacote">Pacote</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-2 col-md-4">
+                        <label class="form-label" for="situacaoBalanco">Situação</label>
+                        <select class="form-select" id="situacaoBalanco" onchange="atualizarBalanco()">
+                            <option value="todas">Todas</option>
+                            <option value="emitida">Emitida</option>
+                            <option value="cancelada">Cancelada</option>
+                            <option value="reembolso_parcial">Reembolso parcial</option>
+                            <option value="reembolso_total">Reembolso total</option>
+                            <option value="nao_informado">Não informada</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4">
+                        <label class="form-label" for="buscaBalanco">Cliente ou localizador</label>
+                        <input class="form-control" id="buscaBalanco" placeholder="Buscar na seleção" oninput="atualizarBalanco()">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="balance-trust-panel mb-3" id="painelConfianca">
+            <div class="balance-trust-main">
+                <div class="d-flex justify-content-between gap-3 mb-2">
+                    <div>
+                        <div class="section-kicker">Cobertura dos dados</div>
+                        <strong id="tituloCobertura">Calculando...</strong>
+                    </div>
+                    <span class="balance-confidence-badge" id="percentualCobertura">0%</span>
+                </div>
+                <div class="progress" role="progressbar" aria-label="Cobertura do balanço">
+                    <div class="progress-bar bg-success" id="barraCobertura" style="width:0%"></div>
+                </div>
+                <small class="text-muted d-block mt-2" id="detalheCobertura"></small>
+            </div>
+            <div class="balance-trust-aside">
+                <span>Fora do balanço</span>
+                <strong id="valorForaBalanco">R$ 0,00</strong>
+                <small id="quantidadeForaBalanco">0 venda(s) da seleção</small>
+                <a href="revisao-vendas.html">Revisar vendas antigas <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </section>
+
+        <div class="alert alert-warning d-none" id="avisoSemBase" role="status">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <strong>Não há total confiável para esta seleção.</strong>
+            Revise as vendas pendentes antes de usar estes números em um fechamento.
+        </div>
+
+        <section class="row g-3 mb-2" aria-label="Indicadores financeiros">
+            <div class="col-xxl col-lg-4 col-md-6">
+                <div class="card balance-metric h-100"><div class="card-body">
+                    <span>Vendido líquido</span><strong id="receitaProjetada">R$ 0,00</strong>
+                    <small>Após cancelamentos e reembolsos</small>
+                </div></div>
+            </div>
+            <div class="col-xxl col-lg-4 col-md-6">
+                <div class="card balance-metric h-100"><div class="card-body">
+                    <span>Custo líquido</span><strong id="custoLiquido">R$ 0,00</strong>
+                    <small>Custo menos estornos do fornecedor</small>
+                </div></div>
+            </div>
+            <div class="col-xxl col-lg-4 col-md-6">
+                <div class="card balance-metric h-100"><div class="card-body">
+                    <span>Recebido líquido</span><strong id="receitaRealizada">R$ 0,00</strong>
+                    <small>Recebido menos reembolsado</small>
+                </div></div>
+            </div>
+            <div class="col-xxl col-lg-4 col-md-6">
+                <div class="card balance-metric emphasis h-100"><div class="card-body">
+                    <span>Resultado realizado</span><strong id="lucroRealizado">R$ 0,00</strong>
+                    <small id="margemRealizada">Margem realizada: 0%</small>
+                </div></div>
+            </div>
+            <div class="col-xxl col-lg-4 col-md-6">
+                <div class="card balance-metric warning h-100"><div class="card-body">
+                    <span>Saldo a receber</span><strong id="saldoAReceber">R$ 0,00</strong>
+                    <small>Vendido líquido menos recebido</small>
+                </div></div>
+            </div>
+            <div class="col-xxl col-lg-4 col-md-6">
+                <div class="card balance-metric h-100"><div class="card-body">
+                    <span>Resultado projetado</span><strong id="lucroProjetado">R$ 0,00</strong>
+                    <small id="margemProjetada">Margem projetada: 0%</small>
+                </div></div>
+            </div>
+        </section>
+
+        <section class="row g-3 mb-3">
+            <div class="col-xl-5">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-graph-up-arrow me-2"></i>Resultado realizado por mês</div>
+                    <div class="card-body" id="graficoMensal"></div>
+                </div>
+            </div>
+            <div class="col-xl-7">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-calendar3 me-2"></i>Conciliação mensal</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr><th>Mês</th><th>Vendas</th><th>Vendido</th><th>Custo</th><th>Recebido</th><th>Resultado</th><th>A receber</th></tr></thead>
+                                <tbody id="tabelaMensal"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card mb-3">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span><i class="bi bi-receipt me-2"></i>Vendas incluídas no balanço</span>
+                <small class="text-muted" id="legendaTabelaVendas"></small>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle balance-detail-table">
+                        <thead><tr><th>Data</th><th>Localizador</th><th>Cliente</th><th>Situação</th><th>Pagamento</th><th>Vendido</th><th>Recebido</th><th>Resultado</th><th></th></tr></thead>
+                        <tbody id="tabelaBalanco"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="card methodology-card">
+            <div class="card-body">
+                <div class="section-kicker">Como os números são calculados</div>
+                <div class="row g-3 mt-0">
+                    <div class="col-lg-4"><strong>Competência comercial</strong><p>Todos os valores são agrupados pela data da venda. Não é um fluxo de caixa por data de pagamento.</p></div>
+                    <div class="col-lg-4"><strong>Resultado</strong><p>Recebido líquido menos custo líquido. O projetado usa o valor vendido líquido no lugar do recebido.</p></div>
+                    <div class="col-lg-4"><strong>Milhas</strong><p>O valor do milheiro é apenas informativo e não entra em vendido, custo, recebido ou resultado.</p></div>
+                </div>
+                <small class="text-muted" id="atualizadoEm"></small>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/storage.js?v=13"></script>
+    <script src="js/utils.js?v=11"></script>
+    <script>
+        let vendasClassificadasExibidas = [];
+
+        document.addEventListener('app:ready', () => {
+            ajustarPeriodo();
+            atualizarBalanco();
+        }, { once: true });
+
+        function ajustarPeriodo() {
+            const personalizado = document.getElementById('periodoBalanco').value === 'personalizado';
+            document.querySelectorAll('.periodo-personalizado').forEach(campo => campo.classList.toggle('d-none', !personalizado));
+        }
+
+        function normalizarTexto(valor) {
+            return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        function chaveDataLocal(data) {
+            return Utils.dataHoraLocalParaInputs(data).data;
+        }
+
+        function limitesDoPeriodo() {
+            const periodo = document.getElementById('periodoBalanco').value;
+            const hoje = new Date();
+            let inicio = '';
+            let fim = '';
+            if (periodo === 'mes') {
+                inicio = chaveDataLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+                fim = chaveDataLocal(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
+            } else if (periodo === 'mes_anterior') {
+                inicio = chaveDataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
+                fim = chaveDataLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 0));
+            } else if (periodo === 'ano') {
+                inicio = `${hoje.getFullYear()}-01-01`;
+                fim = `${hoje.getFullYear()}-12-31`;
+            } else if (periodo === 'personalizado') {
+                inicio = document.getElementById('dataInicioBalanco').value;
+                fim = document.getElementById('dataFimBalanco').value;
+            }
+            return { inicio, fim };
+        }
+
+        function vendaNoPeriodo(venda, limites) {
+            if (!limites.inicio && !limites.fim) return true;
+            const data = String(venda.dataVenda || '').slice(0, 10);
+            if (!data) return false;
+            if (limites.inicio && data < limites.inicio) return false;
+            if (limites.fim && data > limites.fim) return false;
+            return true;
+        }
+
+        function tipoDaVenda(venda) {
+            return venda.tipoVenda === 'pacote' || venda.isPacote ? 'pacote' : 'passagem';
+        }
+
+        function filtrarVendas() {
+            const limites = limitesDoPeriodo();
+            const tipo = document.getElementById('tipoBalanco').value;
+            const situacao = document.getElementById('situacaoBalanco').value;
+            const busca = normalizarTexto(document.getElementById('buscaBalanco').value.trim());
+            const pessoas = new Map(StorageManager.getPessoas().map(pessoa => [String(pessoa.id), pessoa]));
+
+            return StorageManager.getVendas().filter(venda => {
+                if (!vendaNoPeriodo(venda, limites)) return false;
+                if (tipo !== 'todos' && tipoDaVenda(venda) !== tipo) return false;
+                if (situacao !== 'todas') {
+                    if (situacao === 'nao_informado' && venda.statusVenda) return false;
+                    if (situacao !== 'nao_informado' && (!venda.statusVenda || StorageManager.normalizarStatusVenda(venda) !== situacao)) return false;
+                }
+                if (!busca) return true;
+                const cliente = pessoas.get(String(venda.clienteId));
+                return normalizarTexto(`${cliente?.nome || ''} ${StorageManager.getCodigosVenda(venda).join(' ')}`).includes(busca);
+            });
+        }
+
+        function formatarPercentual(valor) {
+            return `${(Number(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+        }
+
+        function nomeDoMes(chave) {
+            const partes = /^(\d{4})-(\d{2})$/.exec(chave);
+            if (!partes) return chave;
+            const data = new Date(Number(partes[1]), Number(partes[2]) - 1, 1);
+            const mes = data.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '');
+            return mes.charAt(0).toUpperCase() + mes.slice(1);
+        }
+
+        function atualizarBalanco() {
+            const selecionadas = filtrarVendas();
+            const balanco = StorageManager.calcularBalancoConfiavel(selecionadas);
+            const geral = StorageManager.calcularBalancoConfiavel(StorageManager.getVendas());
+            vendasClassificadasExibidas = [...balanco.classificadas].sort((a, b) => String(b.dataVenda).localeCompare(String(a.dataVenda)));
+
+            document.getElementById('receitaProjetada').textContent = Utils.formatCurrency(balanco.receitaProjetada);
+            document.getElementById('custoLiquido').textContent = Utils.formatCurrency(balanco.custoLiquido);
+            document.getElementById('receitaRealizada').textContent = Utils.formatCurrency(balanco.receitaRealizada);
+            document.getElementById('lucroRealizado').textContent = Utils.formatCurrency(balanco.lucroRealizado);
+            document.getElementById('saldoAReceber').textContent = Utils.formatCurrency(balanco.saldoAReceber);
+            document.getElementById('lucroProjetado').textContent = Utils.formatCurrency(balanco.lucroProjetado);
+            document.getElementById('margemRealizada').textContent = `Margem realizada: ${formatarPercentual(balanco.margemRealizada)}`;
+            document.getElementById('margemProjetada').textContent = `Margem projetada: ${formatarPercentual(balanco.margemProjetada)}`;
+
+            const cobertura = Math.max(0, Math.min(100, balanco.coberturaPercentual));
+            document.getElementById('percentualCobertura').textContent = balanco.totalRegistros ? formatarPercentual(cobertura) : '—';
+            document.getElementById('barraCobertura').style.width = `${cobertura}%`;
+            document.getElementById('tituloCobertura').textContent = balanco.totalRegistros
+                ? `${balanco.totalClassificadas} de ${balanco.totalRegistros} vendas da seleção estão aptas`
+                : 'Nenhuma venda encontrada na seleção';
+            document.getElementById('detalheCobertura').textContent = geral.totalPendentes
+                ? `${geral.totalPendentes} venda(s) ainda aguardam revisão em todo o sistema.`
+                : 'Todo o histórico ativo está classificado.';
+            document.getElementById('valorForaBalanco').textContent = Utils.formatCurrency(balanco.valorForaBalanco);
+            document.getElementById('quantidadeForaBalanco').textContent = `${balanco.totalPendentes} venda(s) da seleção`;
+            document.getElementById('avisoSemBase').classList.toggle('d-none', balanco.totalClassificadas > 0 || geral.totalPendentes === 0);
+            document.getElementById('exportarCsv').disabled = balanco.totalClassificadas === 0;
+            document.getElementById('atualizadoEm').textContent = `Dados carregados da nuvem nesta tela em ${new Date().toLocaleString('pt-BR')}.`;
+
+            renderizarMensal(selecionadas);
+            renderizarTabela(vendasClassificadasExibidas);
+        }
+
+        function renderizarMensal(vendas) {
+            const meses = StorageManager.agruparBalancoPorMes(vendas);
+            const corpo = document.getElementById('tabelaMensal');
+            const grafico = document.getElementById('graficoMensal');
+            if (!meses.length) {
+                corpo.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Nenhum mês com vendas classificadas.</td></tr>';
+                grafico.innerHTML = '<div class="empty-state py-4"><i class="bi bi-bar-chart"></i><p>Sem dados classificados neste período</p></div>';
+                return;
+            }
+
+            corpo.innerHTML = [...meses].reverse().map(mes => `
+                <tr>
+                    <td><strong>${Utils.escapeHTML(nomeDoMes(mes.mes))}</strong></td>
+                    <td>${mes.totalClassificadas}</td>
+                    <td>${Utils.escapeHTML(Utils.formatCurrency(mes.receitaProjetada))}</td>
+                    <td>${Utils.escapeHTML(Utils.formatCurrency(mes.custoLiquido))}</td>
+                    <td>${Utils.escapeHTML(Utils.formatCurrency(mes.receitaRealizada))}</td>
+                    <td class="${mes.lucroRealizado < 0 ? 'text-danger' : 'text-success'}">${Utils.escapeHTML(Utils.formatCurrency(mes.lucroRealizado))}</td>
+                    <td>${Utils.escapeHTML(Utils.formatCurrency(mes.saldoAReceber))}</td>
+                </tr>`).join('');
+
+            const ultimos = meses.slice(-12);
+            const maior = Math.max(...ultimos.map(mes => Math.abs(mes.lucroRealizado)), 1);
+            grafico.innerHTML = ultimos.map(mes => {
+                const largura = Math.max(3, Math.round(Math.abs(mes.lucroRealizado) / maior * 100));
+                const negativo = mes.lucroRealizado < 0;
+                return `<div class="balance-bar-row">
+                    <span>${Utils.escapeHTML(nomeDoMes(mes.mes))}</span>
+                    <div class="balance-bar-track"><div class="balance-bar ${negativo ? 'negative' : ''}" style="width:${largura}%"></div></div>
+                    <strong class="${negativo ? 'text-danger' : ''}">${Utils.escapeHTML(Utils.formatCurrency(mes.lucroRealizado))}</strong>
+                </div>`;
+            }).join('');
+        }
+
+        function renderizarTabela(vendas) {
+            const corpo = document.getElementById('tabelaBalanco');
+            document.getElementById('legendaTabelaVendas').textContent = `${vendas.length} venda(s) incluída(s)`;
+            if (!vendas.length) {
+                corpo.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Nenhuma venda classificada nesta seleção.</td></tr>';
+                return;
+            }
+            const pessoas = new Map(StorageManager.getPessoas().map(pessoa => [String(pessoa.id), pessoa]));
+            const statusVenda = { emitida: 'Emitida', cancelada: 'Cancelada', reembolso_parcial: 'Reembolso parcial', reembolso_total: 'Reembolso total' };
+            const statusPagamento = { recebido: 'Recebido', parcial: 'Parcial', pendente: 'Pendente' };
+            corpo.innerHTML = vendas.map(venda => {
+                const cliente = pessoas.get(String(venda.clienteId));
+                const financeiro = StorageManager.obterResumoFinanceiroVenda(venda);
+                const codigos = StorageManager.getCodigosVenda(venda).join(' | ') || 'Sem localizador';
+                return `<tr>
+                    <td>${Utils.escapeHTML(Utils.formatDate(venda.dataVenda))}</td>
+                    <td><strong>${Utils.escapeHTML(codigos)}</strong></td>
+                    <td>${Utils.escapeHTML(cliente?.nome || 'Cliente não identificado')}</td>
+                    <td>${Utils.escapeHTML(statusVenda[financeiro.statusVenda] || 'Não informada')}</td>
+                    <td>${Utils.escapeHTML(statusPagamento[financeiro.statusPagamento] || 'Não informado')}</td>
+                    <td>${Utils.escapeHTML(Utils.formatCurrency(financeiro.receitaProjetada))}</td>
+                    <td>${Utils.escapeHTML(Utils.formatCurrency(financeiro.receitaRealizada))}</td>
+                    <td class="${financeiro.lucroRealizado < 0 ? 'text-danger' : 'text-success'}">${Utils.escapeHTML(Utils.formatCurrency(financeiro.lucroRealizado))}</td>
+                    <td><a class="btn btn-sm btn-outline-secondary" href="vendas.html?editar=${encodeURIComponent(venda.id)}" aria-label="Abrir venda ${Utils.escapeHTML(codigos)}"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function protegerCelulaCsv(valor) {
+            let texto = String(valor ?? '');
+            if (/^[=+\-@]/.test(texto)) texto = `'${texto}`;
+            return `"${texto.replace(/"/g, '""')}"`;
+        }
+
+        function exportarBalanco() {
+            if (!vendasClassificadasExibidas.length) return;
+            const pessoas = new Map(StorageManager.getPessoas().map(pessoa => [String(pessoa.id), pessoa]));
+            const cabecalho = ['Data da venda', 'Localizador', 'Cliente', 'Tipo', 'Situação', 'Pagamento', 'Vendido líquido', 'Custo líquido', 'Recebido líquido', 'Resultado realizado', 'Saldo a receber'];
+            const linhas = vendasClassificadasExibidas.map(venda => {
+                const cliente = pessoas.get(String(venda.clienteId));
+                const financeiro = StorageManager.obterResumoFinanceiroVenda(venda);
+                const saldo = Math.max(0, financeiro.receitaProjetada - financeiro.receitaRealizada);
+                return [
+                    venda.dataVenda,
+                    StorageManager.getCodigosVenda(venda).join(' | '),
+                    cliente?.nome || '',
+                    tipoDaVenda(venda),
+                    financeiro.statusVenda,
+                    financeiro.statusPagamento,
+                    financeiro.receitaProjetada.toFixed(2).replace('.', ','),
+                    financeiro.custoLiquido.toFixed(2).replace('.', ','),
+                    financeiro.receitaRealizada.toFixed(2).replace('.', ','),
+                    financeiro.lucroRealizado.toFixed(2).replace('.', ','),
+                    saldo.toFixed(2).replace('.', ',')
+                ];
+            });
+            const csv = [cabecalho, ...linhas].map(linha => linha.map(protegerCelulaCsv).join(';')).join('\r\n');
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `balanco-voecomkennedy-${chaveDataLocal(new Date())}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js?v=10"></script>
+    <script src="js/auth.js?v=10"></script>
+    <script src="js/cloud-sync.js?v=10"></script>
+    <script src="js/app-bootstrap.js?v=10"></script>
+    <script>AppBootstrap.iniciar();</script>
+</body>
+</html>
