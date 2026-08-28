@@ -31,6 +31,7 @@
     --gray-300: #D1D5DB;
     --gray-200: #E5E7EB;
     --gray-100: #F3F4F6;
+    --gray-50: #F9FAFB;
     --white: #FFFFFF;
 
     /* Background - Tema Claro */
@@ -692,6 +693,65 @@ h1, h2, h3, h4, h5, h6 {
 
     .stat-card {
         padding: 12px 16px;
+    }
+}
+
+/* ========================================
+   REVISÃO ASSISTIDA DE VENDAS ANTIGAS
+   ======================================== */
+
+.review-workspace {
+    max-width: 1440px;
+}
+
+.review-card {
+    border-top: 4px solid var(--warning-color);
+}
+
+.review-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.review-summary > div {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: 14px;
+}
+
+.review-summary span,
+.review-summary strong {
+    display: block;
+}
+
+.review-summary span {
+    color: var(--gray-500);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.review-summary strong {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 992px) {
+    .review-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 576px) {
+    .review-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .review-card .card-footer .btn {
+        width: 100%;
     }
 }
 

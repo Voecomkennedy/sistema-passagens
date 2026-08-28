@@ -211,7 +211,10 @@
                         <strong><i class="bi bi-shield-exclamation me-2"></i>Revisão de integridade:</strong>
                         <span id="resumoIntegridade">analisando registros...</span>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="abrirPainelIntegridade()">Ver pendências</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="abrirPainelIntegridade()">Ver pendências</button>
+                        <a class="btn btn-sm btn-dark" href="revisao-vendas.html">Revisar legado</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -759,6 +762,19 @@
                                 <small class="text-muted">Usado no saldo realizado. Não altera o valor contratado da venda.</small>
                             </div>
                         </div>
+                        <div class="row" id="camposDataPagamento">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Data do Pagamento *</label>
+                                <input type="date" class="form-control" id="dataPagamento" onchange="validarValoresFinanceiros()">
+                                <small class="text-muted">Data em que o valor recebido entrou efetivamente.</small>
+                            </div>
+                            <div class="col-md-6 mb-3 d-flex align-items-end">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="dataPagamentoDesconhecida" onchange="toggleDataPagamentoDesconhecida()">
+                                    <label class="form-check-label" for="dataPagamentoDesconhecida">Registro antigo: não sei a data exata</label>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Observações -->
                         <div class="row">
@@ -864,7 +880,7 @@
 
     <!-- Custom JS -->
     <script src="js/aeroportos-data.js?v=10"></script>
-    <script src="js/storage.js?v=11"></script>
+    <script src="js/storage.js?v=12"></script>
     <script src="js/utils.js?v=11"></script>
 
     <script>
@@ -1174,6 +1190,7 @@
 
             if (params.get('integridade') === '1') abrirPainelIntegridade();
             if (params.get('nova') === '1' && params.get('from_cotacao') !== 'true') abrirModalVenda();
+            if (params.get('editar')) abrirModalVenda(params.get('editar'));
         }
 
         // Verificar se há dados de cotação para converter em venda
@@ -1898,6 +1915,8 @@
             document.getElementById('dataVendaAutomatica').checked = true;
             document.getElementById('statusPagamento').value = 'recebido';
             document.getElementById('valorRecebido').value = '0,00';
+            document.getElementById('dataPagamento').value = Utils.dataHoraLocalParaInputs().data;
+            document.getElementById('dataPagamentoDesconhecida').checked = false;
             atualizarCamposLinksRastreamento([]);
             toggleParcelas();
             toggleDataVenda();
@@ -1908,14 +1927,29 @@
         function toggleValorRecebido() {
             const status = document.getElementById('statusPagamento').value;
             const campo = document.getElementById('valorRecebido');
+            const camposData = document.getElementById('camposDataPagamento');
+            const exigeData = status === 'recebido' || status === 'parcial';
             campo.readOnly = status !== 'parcial';
             campo.classList.toggle('bg-light', campo.readOnly);
+            camposData.style.display = exigeData ? 'flex' : 'none';
 
             if (status === 'recebido') {
                 campo.value = document.getElementById('valorVenda').value || '0,00';
             } else if (status === 'pendente' || status === 'nao_informado') {
                 campo.value = '0,00';
+                document.getElementById('dataPagamento').value = '';
+                document.getElementById('dataPagamentoDesconhecida').checked = false;
             }
+            toggleDataPagamentoDesconhecida();
+            validarValoresFinanceiros();
+        }
+
+        function toggleDataPagamentoDesconhecida() {
+            const campo = document.getElementById('dataPagamento');
+            const desconhecida = document.getElementById('dataPagamentoDesconhecida').checked;
+            campo.disabled = desconhecida;
+            if (desconhecida) campo.value = '';
+            campo.classList.toggle('bg-light', desconhecida);
             validarValoresFinanceiros();
         }
 
@@ -1924,6 +1958,9 @@
             const recebido = StorageManager.numeroParaCentavos(document.getElementById('valorRecebido').value);
             const status = document.getElementById('statusPagamento').value;
             const campoRecebido = document.getElementById('valorRecebido');
+            const campoDataPagamento = document.getElementById('dataPagamento');
+            const dataDesconhecida = document.getElementById('dataPagamentoDesconhecida').checked;
+            const hoje = Utils.dataHoraLocalParaInputs().data;
             let erro = '';
             if (recebido > venda) erro = 'O valor recebido não pode ser maior que o valor da venda.';
             else if (status === 'recebido' && recebido !== venda) erro = 'Pagamento recebido deve ter o mesmo valor da venda.';
@@ -1931,7 +1968,14 @@
             else if ((status === 'pendente' || status === 'nao_informado') && recebido !== 0) erro = 'Pagamento pendente ou não informado deve ter valor recebido igual a zero.';
             else if (!vendaEditandoId && status === 'nao_informado') erro = 'Informe a situação do pagamento da nova venda.';
             campoRecebido.setCustomValidity(erro);
-            return !erro;
+            let erroData = '';
+            if ((status === 'recebido' || status === 'parcial') && !campoDataPagamento.value && !dataDesconhecida) {
+                erroData = 'Informe a data do pagamento ou marque que a data exata é desconhecida.';
+            } else if (campoDataPagamento.value > hoje) {
+                erroData = 'A data do pagamento não pode estar no futuro.';
+            }
+            campoDataPagamento.setCustomValidity(erroData);
+            return !erro && !erroData;
         }
 
         function validarDatasVenda() {
@@ -2049,6 +2093,8 @@
                 document.getElementById('formaPagamento').value = venda.formaPagamento;
                 document.getElementById('statusPagamento').value = venda.statusPagamento || 'nao_informado';
                 document.getElementById('valorRecebido').value = Utils.numeroParaMoeda(venda.valorRecebido || 0);
+                document.getElementById('dataPagamento').value = venda.dataPagamento || '';
+                document.getElementById('dataPagamentoDesconhecida').checked = !!venda.dataPagamentoDesconhecida;
                 document.getElementById('observacoes').value = venda.observacoes || '';
 
                 // Link de rastreamento
@@ -2065,6 +2111,7 @@
                 if (venda.statusPagamento === 'parcial' && recebidoOriginal !== undefined) {
                     document.getElementById('valorRecebido').value = Utils.numeroParaMoeda(recebidoOriginal);
                 }
+                toggleDataPagamentoDesconhecida();
 
                 // Em edição a data sempre parte do valor histórico, nunca do momento atual.
                 const dataHoraOriginal = obterDataHoraOriginalVenda(venda);
@@ -2211,6 +2258,8 @@
                 valorRecebido: StorageManager.centavosParaNumero(
                     StorageManager.numeroParaCentavos(document.getElementById('valorRecebido').value)
                 ),
+                dataPagamento: document.getElementById('dataPagamento').value,
+                dataPagamentoDesconhecida: document.getElementById('dataPagamentoDesconhecida').checked,
                 parcelas: parseInt(document.getElementById('parcelas').value) || 1,
                 observacoes: document.getElementById('observacoes').value,
                 linksRastreamento: linksRastreamento,
@@ -2382,6 +2431,7 @@
                 data_venda: 'Data da venda',
                 status_venda: 'Situação',
                 status_pagamento: 'Pagamento',
+                data_pagamento: 'Data do pagamento',
                 data_viagem: 'Datas da viagem',
                 valor_financeiro: 'Valores financeiros',
                 localizador_duplicado: 'Duplicidade'
@@ -2407,6 +2457,7 @@
                 criacao: 'Venda criada',
                 edicao: 'Venda editada',
                 movimento_financeiro: 'Movimento financeiro',
+                revisao_legado: 'Revisão do registro antigo',
                 arquivamento: 'Venda arquivada',
                 restauracao: 'Venda restaurada'
             };

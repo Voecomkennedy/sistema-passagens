@@ -163,6 +163,79 @@ const StorageManager = {
         };
     },
 
+    vendaPrecisaRevisaoLegado(venda) {
+        const statusVenda = String(venda?.statusVenda || '').toLowerCase();
+        const statusPagamento = String(venda?.statusPagamento || '').toLowerCase();
+        const pagamentoRealizado = statusPagamento === 'recebido' || statusPagamento === 'parcial';
+        return !venda?.dataVenda ||
+            !['emitida', 'cancelada', 'reembolso_parcial', 'reembolso_total'].includes(statusVenda) ||
+            !['recebido', 'parcial', 'pendente'].includes(statusPagamento) ||
+            (pagamentoRealizado && !venda?.dataPagamento && !venda?.dataPagamentoDesconhecida);
+    },
+
+    getVendasParaRevisaoLegado() {
+        return this.getVendas().filter(venda => this.vendaPrecisaRevisaoLegado(venda));
+    },
+
+    revisarVendaLegada(id, dados) {
+        const venda = this.getVendaById(id);
+        if (!venda || venda.excluidaEm) return { ok: false, erro: 'Venda não encontrada.' };
+
+        const hoje = new Date();
+        const hojeTexto = [
+            hoje.getFullYear(),
+            String(hoje.getMonth() + 1).padStart(2, '0'),
+            String(hoje.getDate()).padStart(2, '0')
+        ].join('-');
+        const dataVenda = String(dados?.dataVenda || '');
+        const statusVenda = String(dados?.statusVenda || '');
+        const statusPagamento = String(dados?.statusPagamento || '');
+        const dataPagamento = String(dados?.dataPagamento || '');
+        const dataPagamentoDesconhecida = !!dados?.dataPagamentoDesconhecida;
+        const valorVenda = this.numeroParaCentavos(venda.valorVenda);
+        const valorRecebido = this.numeroParaCentavos(dados?.valorRecebido);
+        const erros = [];
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dataVenda) || dataVenda > hojeTexto) {
+            erros.push('informe a data original da venda, sem usar uma data futura');
+        }
+        if (!['emitida', 'cancelada', 'reembolso_parcial', 'reembolso_total'].includes(statusVenda)) {
+            erros.push('informe a situação da venda');
+        }
+        if (!['recebido', 'parcial', 'pendente'].includes(statusPagamento)) {
+            erros.push('informe a situação do pagamento');
+        }
+        if (statusPagamento === 'recebido' && valorRecebido !== valorVenda) {
+            erros.push('pagamento recebido deve ter o mesmo valor da venda');
+        }
+        if (statusPagamento === 'parcial' && (valorRecebido <= 0 || valorRecebido >= valorVenda)) {
+            erros.push('pagamento parcial deve ser maior que zero e menor que a venda');
+        }
+        if (statusPagamento === 'pendente' && valorRecebido !== 0) {
+            erros.push('pagamento pendente deve ter valor recebido igual a zero');
+        }
+        if ((statusPagamento === 'recebido' || statusPagamento === 'parcial') &&
+            !dataPagamento && !dataPagamentoDesconhecida) {
+            erros.push('informe a data do pagamento ou marque que a data exata é desconhecida');
+        }
+        if (dataPagamento && (!/^\d{4}-\d{2}-\d{2}$/.test(dataPagamento) || dataPagamento > hojeTexto)) {
+            erros.push('a data do pagamento não pode estar no futuro');
+        }
+        if (erros.length) return { ok: false, erro: erros.join('; ') + '.' };
+
+        const atualizado = this.updateVenda(id, {
+            dataVenda,
+            statusVenda,
+            statusPagamento,
+            valorRecebido: this.centavosParaNumero(valorRecebido),
+            dataPagamento: statusPagamento === 'pendente' ? '' : dataPagamento,
+            dataPagamentoDesconhecida: statusPagamento === 'pendente' ? false : dataPagamentoDesconhecida,
+            revisaoLegacyEm: new Date().toISOString(),
+            acaoHistorico: 'revisao_legado'
+        });
+        return atualizado ? { ok: true, venda: atualizado } : { ok: false, erro: 'Não foi possível salvar a revisão.' };
+    },
+
     analisarIntegridadeVendas() {
         const vendas = this.getVendas();
         const problemas = [];
@@ -178,6 +251,11 @@ const StorageManager = {
             if (!venda.statusVenda) adicionar('status_venda', 'Status da venda não informado');
             if (!venda.statusPagamento || this.normalizarStatusPagamento(venda) === 'nao_informado') {
                 adicionar('status_pagamento', 'Status do pagamento não informado');
+            }
+            const statusPagamento = this.normalizarStatusPagamento(venda);
+            if ((statusPagamento === 'recebido' || statusPagamento === 'parcial') &&
+                !venda.dataPagamento && !venda.dataPagamentoDesconhecida) {
+                adicionar('data_pagamento', 'Data do pagamento não informada');
             }
             if (venda.dataEmbarque && venda.dataVolta && venda.dataVolta < venda.dataEmbarque) {
                 adicionar('data_viagem', 'Data de volta anterior à data de ida');
