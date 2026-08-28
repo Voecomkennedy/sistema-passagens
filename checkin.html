@@ -81,16 +81,16 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="filter-group">
-                            <button class="filter-btn active" onclick="filtrarPorPeriodo('hoje')">
+                            <button class="filter-btn active" data-periodo="hoje" onclick="filtrarPorPeriodo('hoje', this)">
                                 <i class="bi bi-calendar-day me-2"></i>Hoje
                             </button>
-                            <button class="filter-btn" onclick="filtrarPorPeriodo('7dias')">
+                            <button class="filter-btn" data-periodo="7dias" onclick="filtrarPorPeriodo('7dias', this)">
                                 <i class="bi bi-calendar-week me-2"></i>Próximos 7 dias
                             </button>
-                            <button class="filter-btn" onclick="filtrarPorPeriodo('30dias')">
+                            <button class="filter-btn" data-periodo="30dias" onclick="filtrarPorPeriodo('30dias', this)">
                                 <i class="bi bi-calendar-month me-2"></i>Próximos 30 dias
                             </button>
-                            <button class="filter-btn" onclick="filtrarPorPeriodo('todos')">
+                            <button class="filter-btn" data-periodo="todos" onclick="filtrarPorPeriodo('todos', this)">
                                 <i class="bi bi-calendar3 me-2"></i>Todos os voos
                             </button>
                         </div>
@@ -198,21 +198,23 @@
         // Inicializar
         document.addEventListener('app:ready', () => {
             modalDetalhes = new bootstrap.Modal(document.getElementById('modalDetalhes'));
-            carregarVoos();
+            const periodoURL = new URLSearchParams(window.location.search).get('periodo');
+            filtrarPorPeriodo(['hoje', '7dias', '30dias', 'todos'].includes(periodoURL) ? periodoURL : 'hoje');
 
             // Atualizar a cada segundo
             intervalId = setInterval(carregarVoos, 1000);
         });
 
         // Filtrar por período
-        function filtrarPorPeriodo(periodo) {
+        function filtrarPorPeriodo(periodo, botao = null) {
             periodoAtual = periodo;
 
             // Atualizar botões ativos
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.closest('.filter-btn').classList.add('active');
+            const botaoAtivo = botao || document.querySelector(`.filter-btn[data-periodo="${periodo}"]`);
+            if (botaoAtivo) botaoAtivo.classList.add('active');
 
             carregarVoos();
         }
@@ -230,6 +232,9 @@
             // Filtrar por período DE EMBARQUE (não pela data da venda!)
             // O check-in se baseia em quando o cliente VAI VIAJAR.
             vendas = Utils.filtrarPorPeriodoEmbarque(vendas, periodoAtual);
+            vendas = vendas.filter(venda =>
+                !['cancelada', 'reembolso_total'].includes(StorageManager.normalizarStatusVenda(venda))
+            );
 
             // Garantir que só aparecem voos com data/hora válidos e futuros
             const agora = new Date();

@@ -133,11 +133,11 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="row align-items-end">
-                            <div class="col-md-4 mb-2">
+                            <div class="col-md-3 mb-2">
                                 <label class="form-label">Buscar</label>
                                 <input type="text" class="form-control" id="buscaCotacao" placeholder="Cliente, origem, destino...">
                             </div>
-                            <div class="col-md-3 mb-2">
+                            <div class="col-md-2 mb-2">
                                 <label class="form-label">Status</label>
                                 <select class="form-select" id="filtroStatus" onchange="aplicarFiltros()">
                                     <option value="todas">Todas</option>
@@ -145,6 +145,12 @@
                                     <option value="convertida">Convertidas</option>
                                     <option value="perdida">Perdidas</option>
                                 </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <div class="form-check pb-2">
+                                    <input class="form-check-input" type="checkbox" id="somenteCotacoesAntigas" onchange="aplicarFiltros()">
+                                    <label class="form-check-label" for="somenteCotacoesAntigas">Abertas há 30+ dias</label>
+                                </div>
                             </div>
                             <div class="col-md-3 mb-2">
                                 <label class="form-label">Ordenar por</label>
@@ -543,6 +549,7 @@
         // Inicializar
         document.addEventListener('app:ready', () => {
             modalCotacao = new bootstrap.Modal(document.getElementById('modalCotacao'));
+            aplicarParametrosDaURLCotacoes();
             carregarCotacoes();
 
             // Adicionar evento de busca
@@ -554,6 +561,24 @@
                 configurarAutocompleteCotacao('destinoCotacao', 'sugestoesDestinoCotacao');
             }, 100);
         });
+
+        function aplicarParametrosDaURLCotacoes() {
+            const params = new URLSearchParams(window.location.search);
+            const status = params.get('status');
+            if (['todas', 'aberta', 'convertida', 'perdida'].includes(status)) {
+                document.getElementById('filtroStatus').value = status;
+            }
+            document.getElementById('somenteCotacoesAntigas').checked = params.get('antigas') === '1';
+        }
+
+        function cotacaoAbertaAntiga(cotacao) {
+            if ((cotacao.status || 'aberta') !== 'aberta') return false;
+            const criadaEm = new Date(cotacao.dataCriacao || cotacao.dataCadastro || '');
+            if (Number.isNaN(criadaEm.getTime())) return false;
+            const limite = new Date();
+            limite.setDate(limite.getDate() - 30);
+            return criadaEm <= limite;
+        }
 
         // Calcular total de passageiros
         function calcularTotalPassageiros() {
@@ -998,7 +1023,11 @@
             // Filtro de status
             const status = document.getElementById('filtroStatus').value;
             if (status !== 'todas') {
-                cotacoes = cotacoes.filter(c => c.status === status);
+                cotacoes = cotacoes.filter(c => (c.status || 'aberta') === status);
+            }
+
+            if (document.getElementById('somenteCotacoesAntigas').checked) {
+                cotacoes = cotacoes.filter(cotacaoAbertaAntiga);
             }
 
             // Ordenação
@@ -1659,6 +1688,7 @@
         function limparFiltros() {
             document.getElementById('buscaCotacao').value = '';
             document.getElementById('filtroStatus').value = 'todas';
+            document.getElementById('somenteCotacoesAntigas').checked = false;
             document.getElementById('ordenacaoCotacao').value = 'data_desc';
             carregarCotacoes();
         }

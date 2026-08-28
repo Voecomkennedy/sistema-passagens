@@ -175,6 +175,7 @@
                                     <option value="parcial">Parcial</option>
                                     <option value="pendente">Pendente</option>
                                     <option value="nao_informado">Não informado</option>
+                                    <option value="revisar">Requer revisão</option>
                                 </select>
                             </div>
                             <div class="col-md-2 mb-2">
@@ -1152,7 +1153,28 @@
 
             // Verificar se veio de uma cotação
             verificarCotacaoParaVenda();
+            aplicarParametrosDaURLVendas();
         });
+
+        function aplicarParametrosDaURLVendas() {
+            const params = new URLSearchParams(window.location.search);
+            const periodo = params.get('periodo');
+            const pagamento = params.get('pagamento');
+            const periodosValidos = ['todos', 'hoje', '7dias', '30dias', '60dias', '90dias', 'mes', 'ano', 'customizado'];
+            const pagamentosValidos = ['todos', 'recebido', 'parcial', 'pendente', 'nao_informado', 'revisar'];
+
+            if (periodosValidos.includes(periodo)) {
+                document.getElementById('filtroPeriodo').value = periodo;
+            }
+            if (pagamentosValidos.includes(pagamento)) {
+                document.getElementById('filtroStatusPagamento').value = pagamento;
+            }
+            toggleDataCustomizada();
+            aplicarFiltros();
+
+            if (params.get('integridade') === '1') abrirPainelIntegridade();
+            if (params.get('nova') === '1' && params.get('from_cotacao') !== 'true') abrirModalVenda();
+        }
 
         // Verificar se há dados de cotação para converter em venda
         function verificarCotacaoParaVenda() {
@@ -2749,7 +2771,9 @@
 
             const statusPagamento = document.getElementById('filtroStatusPagamento').value;
             if (statusPagamento !== 'todos') {
-                vendas = vendas.filter(venda => StorageManager.normalizarStatusPagamento(venda) === statusPagamento);
+                vendas = vendas.filter(venda => statusPagamento === 'revisar'
+                    ? StorageManager.normalizarStatusPagamento(venda) !== 'recebido'
+                    : StorageManager.normalizarStatusPagamento(venda) === statusPagamento);
             }
 
             // Filtro de busca

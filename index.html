@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
     <!-- Navbar -->
@@ -69,15 +69,89 @@
     <!-- Main Content -->
     <div class="container-fluid py-3">
         <div class="row mb-3">
-            <div class="col-12">
-                <h2 style="font-size: 1.6rem; margin-bottom: 0.3rem;"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
-                <p class="text-muted" style="font-size: 0.9rem;">Visão geral do sistema e alertas de check-in</p>
+            <div class="col-12 page-heading">
+                <div>
+                    <div class="section-kicker">Central operacional</div>
+                    <h2 class="mb-1"><i class="bi bi-speedometer2 me-2"></i>O que precisa de atenção</h2>
+                    <p class="text-muted mb-0">Pendências primeiro; números de acompanhamento depois.</p>
+                </div>
+                <div class="d-flex gap-2 btn-group-operacao">
+                    <a href="vendas.html?nova=1" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Nova venda
+                    </a>
+                    <a href="pessoas.html?tipo=cliente&novo=1" class="btn btn-outline-primary">
+                        <i class="bi bi-person-plus me-1"></i>Novo Cliente
+                    </a>
+                </div>
             </div>
+        </div>
+
+        <div class="row g-3 mb-2" id="centralPendencias">
+            <div class="col-xl-3 col-md-6">
+                <a class="attention-card warning" data-kind="pagamentos" href="vendas.html?pagamento=revisar">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="stat-label">Pagamentos a revisar</div>
+                            <i class="bi bi-cash-coin attention-icon"></i>
+                        </div>
+                        <div class="attention-value" id="pendenciasPagamento">0</div>
+                        <small class="text-muted" id="detalhePendenciasPagamento">Pendentes, parciais ou sem informação</small>
+                        <span class="attention-link">Abrir vendas filtradas <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <a class="attention-card info" data-kind="integridade" href="vendas.html?integridade=1">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="stat-label">Dados inconsistentes</div>
+                            <i class="bi bi-shield-exclamation attention-icon"></i>
+                        </div>
+                        <div class="attention-value" id="pendenciasIntegridade">0</div>
+                        <small class="text-muted" id="detalhePendenciasIntegridade">Vendas que precisam de conferência</small>
+                        <span class="attention-link">Revisar pendências <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <a class="attention-card danger" data-kind="checkins" href="checkin.html?periodo=7dias">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="stat-label">Check-ins urgentes</div>
+                            <i class="bi bi-clock-history attention-icon"></i>
+                        </div>
+                        <div class="attention-value" id="checkinsUrgentes">0</div>
+                        <small class="text-muted">Voos nas próximas 48 horas</small>
+                        <span class="attention-link">Abrir fila de check-in <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <a class="attention-card info" data-kind="cotacoes" href="cotacoes.html?status=aberta&antigas=1">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="stat-label">Cotações em aberto</div>
+                            <i class="bi bi-calculator attention-icon"></i>
+                        </div>
+                        <div class="attention-value" id="cotacoesAbertasPendentes">0</div>
+                        <small class="text-muted" id="detalheCotacoesAbertas">Aguardando conversão ou encerramento</small>
+                        <span class="attention-link">Ver cotações antigas <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="section-heading">
+            <div>
+                <div class="section-kicker">Acompanhamento</div>
+                <h4 class="mb-0">Resumo comercial do mês</h4>
+            </div>
+            <a href="vendas.html?periodo=mes" class="btn btn-sm btn-outline-secondary">Ver vendas do mês</a>
         </div>
 
         <!-- Cards de Estatísticas -->
         <div class="row mb-3">
-            <div class="col-md-3 col-sm-6 mb-2">
+            <div class="col-md-4 col-sm-6 mb-2">
                 <div class="card stat-card">
                     <div class="card-body">
                         <div class="stat-label">Vendas do Mês</div>
@@ -86,7 +160,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-2">
+            <div class="col-md-4 col-sm-6 mb-2">
                 <div class="card stat-card success">
                     <div class="card-body">
                         <div class="stat-label">Faturamento do Mês</div>
@@ -95,21 +169,12 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-2">
+            <div class="col-md-4 col-sm-12 mb-2">
                 <div class="card stat-card warning">
                     <div class="card-body">
                         <div class="stat-label">Lucro do Mês</div>
                         <div class="stat-value" id="lucroTotal">R$ 0,00</div>
                         <small class="text-muted" id="margemMedia">Margem: 0%</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-2">
-                <div class="card stat-card danger">
-                    <div class="card-body">
-                        <div class="stat-label">Check-ins Urgentes</div>
-                        <div class="stat-value" id="checkinsUrgentes">0</div>
-                        <small class="text-muted">Próximas 48h</small>
                     </div>
                 </div>
             </div>
@@ -154,9 +219,9 @@
                                         <th>Localizador</th>
                                         <th>Cliente</th>
                                         <th>Rota</th>
-                                        <th>Data Embarque</th>
-                                        <th>Valor</th>
-                                        <th>Margem</th>
+                                        <th>Embarque</th>
+                                        <th>Situação</th>
+                                        <th>Valor líquido</th>
                                     </tr>
                                 </thead>
                                 <tbody id="vendasRecentesBody">
@@ -173,33 +238,6 @@
             </div>
         </div>
 
-        <!-- Ações Rápidas -->
-        <div class="row mt-3">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-lightning-fill me-2"></i>
-                        Ações Rápidas
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex gap-2 flex-wrap">
-                            <a href="vendas.html" class="btn btn-primary">
-                                <i class="bi bi-plus-circle me-2"></i>Nova Venda
-                            </a>
-                            <a href="pessoas.html?tipo=cliente&novo=1" class="btn btn-success">
-                                <i class="bi bi-person-plus me-2"></i>Novo Cliente
-                            </a>
-                            <a href="checkin.html" class="btn btn-warning">
-                                <i class="bi bi-clock me-2"></i>Ver Check-ins
-                            </a>
-                            <a href="backup.html" class="btn btn-info">
-                                <i class="bi bi-cloud-arrow-down me-2"></i>Backup e Restauração
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -210,9 +248,71 @@
     <script src="js/utils.js?v=10"></script>
 
     <script>
+        function obterDataHoraEmbarque(venda) {
+            if (!venda?.dataEmbarque) return null;
+            const data = Utils.parseLocalDate(venda.dataEmbarque);
+            if (!data || Number.isNaN(data.getTime())) return null;
+            const [hora, minuto] = String(venda.horaEmbarque || '00:00').split(':');
+            data.setHours(parseInt(hora, 10) || 0, parseInt(minuto, 10) || 0, 0, 0);
+            return data;
+        }
+
+        function atualizarPendenciasOperacionais() {
+            const vendas = StorageManager.getVendas();
+            const cotacoes = StorageManager.getCotacoes() || [];
+            const problemas = StorageManager.analisarIntegridadeVendas();
+            const vendasComProblema = new Set(problemas.map(problema => String(problema.vendaId)));
+            const pagamentos = vendas.filter(venda =>
+                StorageManager.normalizarStatusPagamento(venda) !== 'recebido'
+            );
+
+            const agora = new Date();
+            const checkinsUrgentes = vendas.filter(venda => {
+                const status = StorageManager.normalizarStatusVenda(venda);
+                if (status === 'cancelada' || status === 'reembolso_total') return false;
+                const embarque = obterDataHoraEmbarque(venda);
+                if (!embarque) return false;
+                const horasRestantes = (embarque - agora) / (1000 * 60 * 60);
+                return horasRestantes >= 0 && horasRestantes <= 48;
+            });
+
+            const cotacoesAbertas = cotacoes.filter(cotacao => (cotacao.status || 'aberta') === 'aberta');
+            const limiteAntigas = new Date(agora);
+            limiteAntigas.setDate(limiteAntigas.getDate() - 30);
+            const cotacoesAntigas = cotacoesAbertas.filter(cotacao => {
+                const criadaEm = new Date(cotacao.dataCriacao || cotacao.dataCadastro || '');
+                return !Number.isNaN(criadaEm.getTime()) && criadaEm <= limiteAntigas;
+            });
+
+            document.getElementById('pendenciasPagamento').textContent = pagamentos.length;
+            document.getElementById('detalhePendenciasPagamento').textContent = pagamentos.length
+                ? 'Pendentes, parciais ou sem informação'
+                : 'Todos os pagamentos estão informados';
+            document.getElementById('pendenciasIntegridade').textContent = vendasComProblema.size;
+            document.getElementById('detalhePendenciasIntegridade').textContent = problemas.length
+                ? `${problemas.length} ocorrência(s) para conferir`
+                : 'Nenhuma inconsistência detectada';
+            document.getElementById('checkinsUrgentes').textContent = checkinsUrgentes.length;
+            document.getElementById('cotacoesAbertasPendentes').textContent = cotacoesAbertas.length;
+            document.getElementById('detalheCotacoesAbertas').textContent = cotacoesAntigas.length
+                ? `${cotacoesAntigas.length} aberta(s) há 30 dias ou mais`
+                : 'Nenhuma aberta há mais de 30 dias';
+
+            const quantidades = {
+                pagamentos: pagamentos.length,
+                integridade: vendasComProblema.size,
+                checkins: checkinsUrgentes.length,
+                cotacoes: cotacoesAbertas.length
+            };
+            document.querySelectorAll('.attention-card[data-kind]').forEach(card => {
+                card.classList.toggle('is-clear', quantidades[card.dataset.kind] === 0);
+            });
+        }
+
         // Atualizar estatísticas
         function atualizarEstatisticas() {
-            const stats = StorageManager.getStats();
+            const vendasMes = Utils.filtrarPorPeriodo(StorageManager.getVendas(), 'mes');
+            const stats = StorageManager.calcularStatsPeriodo(vendasMes);
 
             // Obter nome do mês atual
             const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -230,7 +330,8 @@
         // Atualizar alertas de check-in
         function atualizarAlertasCheckin() {
             const vendas = StorageManager.getVendas();
-            const proximos7Dias = Utils.filtrarPorPeriodoEmbarque(vendas, '7dias');
+            const proximos7Dias = Utils.filtrarPorPeriodoEmbarque(vendas, '7dias')
+                .filter(venda => !['cancelada', 'reembolso_total'].includes(StorageManager.normalizarStatusVenda(venda)));
             const alertasContainer = document.getElementById('alertasCheckin');
 
             if (proximos7Dias.length === 0) {
@@ -240,23 +341,21 @@
                         <p>Nenhum voo próximo nos próximos 7 dias</p>
                     </div>
                 `;
-                document.getElementById('checkinsUrgentes').textContent = '0';
                 return;
             }
 
             // Ordenar por data de embarque
             const vendasOrdenadas = Utils.ordenarPorData(proximos7Dias, 'dataEmbarque');
 
-            let urgentes = 0;
             let html = '';
 
             vendasOrdenadas.forEach(venda => {
                 const cliente = StorageManager.getClienteById(venda.clienteId);
-                const tempo = Utils.calcularDiferencaHoras(venda.dataEmbarque);
+                const embarque = obterDataHoraEmbarque(venda);
+                if (!embarque) return;
+                const tempo = Utils.calcularDiferencaHoras(embarque);
                 const horasRestantes = tempo.horas;
                 const alertClass = Utils.getAlertClass(horasRestantes);
-
-                if (horasRestantes < 48) urgentes++;
 
                 html += `
                     <div class="checkin-alert ${alertClass} mb-2">
@@ -277,7 +376,6 @@
             });
 
             alertasContainer.innerHTML = html;
-            document.getElementById('checkinsUrgentes').textContent = urgentes;
         }
 
         // Atualizar vendas recentes
@@ -316,8 +414,14 @@
             let html = '';
             vendasRecentes.forEach(venda => {
                 const cliente = StorageManager.getClienteById(venda.clienteId);
-                const margem = Utils.calcularMargemLucro(venda.valorVenda, venda.valorCusto);
-                const margemClass = Utils.getMargemClass(margem);
+                const financeiro = StorageManager.obterResumoFinanceiroVenda(venda);
+                const statusNormalizado = venda.statusVenda ? financeiro.statusVenda : 'nao_informado';
+                const statusVenda = {
+                    emitida: ['Emitida', 'bg-success'],
+                    cancelada: ['Cancelada', 'bg-danger'],
+                    reembolso_parcial: ['Reembolso parcial', 'bg-warning text-dark'],
+                    reembolso_total: ['Reembolso total', 'bg-secondary']
+                }[statusNormalizado] || ['Não informado', 'bg-secondary'];
 
                 html += `
                     <tr>
@@ -325,8 +429,8 @@
                         <td>${Utils.escapeHTML(cliente ? cliente.nome : 'N/A')}</td>
                         <td>${Utils.escapeHTML(venda.origem)} → ${Utils.escapeHTML(venda.destino)}</td>
                         <td>${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))}</td>
-                        <td>${Utils.escapeHTML(Utils.formatCurrency(venda.valorVenda))}</td>
-                        <td class="${margemClass}">${Utils.escapeHTML(Utils.formatMargemLucro(margem))}</td>
+                        <td><span class="badge ${statusVenda[1]}">${statusVenda[0]}</span></td>
+                        <td>${Utils.escapeHTML(Utils.formatCurrency(financeiro.receitaProjetada))}</td>
                     </tr>
                 `;
             });
@@ -336,6 +440,7 @@
 
         // Função central que atualiza todo o dashboard (com proteção contra erros)
         function atualizarDashboard() {
+            try { atualizarPendenciasOperacionais(); } catch (e) { console.error('Erro em pendências:', e); }
             try { atualizarEstatisticas(); } catch (e) { console.error('Erro em estatísticas:', e); }
             try { atualizarAlertasCheckin(); } catch (e) { console.error('Erro em alertas:', e); }
             try { atualizarVendasRecentes(); } catch (e) { console.error('Erro em vendas recentes:', e); }
@@ -349,6 +454,7 @@
                 try { atualizarAlertasCheckin(); } catch (e) { console.error(e); }
             }, 1000);
             setInterval(() => {
+                try { atualizarPendenciasOperacionais(); } catch (e) { console.error(e); }
                 try { atualizarEstatisticas(); } catch (e) { console.error(e); }
                 try { atualizarVendasRecentes(); } catch (e) { console.error(e); }
             }, 5000);
