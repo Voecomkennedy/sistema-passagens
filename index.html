@@ -37,11 +37,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="pacotes.html">
-                            <i class="bi bi-box-fill"></i> Pacotes
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="cotacoes.html">
                             <i class="bi bi-calculator-fill"></i> Cotações
                         </a>
@@ -120,21 +115,6 @@
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="alert alert-info mb-0 d-flex flex-wrap justify-content-between gap-2 align-items-center">
-                    <span>
-                        <i class="bi bi-box-fill me-2"></i>
-                        <strong>Pacotes cadastrados separadamente</strong>
-                        <small class="d-block text-muted">Não entram nos cards acima para evitar contagem dupla.</small>
-                    </span>
-                    <span><strong id="pacotesAtivosResumo">0</strong> ativos</span>
-                    <span>Vendas: <strong id="faturamentoPacotesResumo">R$ 0,00</strong></span>
-                    <span>Lucro: <strong id="lucroPacotesResumo">R$ 0,00</strong></span>
-                </div>
-            </div>
-        </div>
-
         <!-- Alertas de Check-in -->
         <div class="row mb-3">
             <div class="col-12">
@@ -206,18 +186,15 @@
                             <a href="vendas.html" class="btn btn-primary">
                                 <i class="bi bi-plus-circle me-2"></i>Nova Venda
                             </a>
-                            <a href="clientes.html" class="btn btn-success">
+                            <a href="pessoas.html?tipo=cliente&novo=1" class="btn btn-success">
                                 <i class="bi bi-person-plus me-2"></i>Novo Cliente
                             </a>
                             <a href="checkin.html" class="btn btn-warning">
                                 <i class="bi bi-clock me-2"></i>Ver Check-ins
                             </a>
-                            <button onclick="exportarDados()" class="btn btn-info">
-                                <i class="bi bi-download me-2"></i>Exportar Dados
-                            </button>
-                            <button onclick="StorageManager.clearAll()" class="btn btn-danger">
-                                <i class="bi bi-trash me-2"></i>Limpar Dados
-                            </button>
+                            <a href="backup.html" class="btn btn-info">
+                                <i class="bi bi-cloud-arrow-down me-2"></i>Backup e Restauração
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -236,7 +213,6 @@
         // Atualizar estatísticas
         function atualizarEstatisticas() {
             const stats = StorageManager.getStats();
-            const statsPacotes = StorageManager.calcularStatsPacotes();
 
             // Obter nome do mês atual
             const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -249,9 +225,6 @@
             document.getElementById('lucroTotal').textContent = Utils.formatCurrency(stats.lucroTotal);
             document.getElementById('margemMedia').textContent = `Margem: ${stats.margemLucroMedia.toFixed(2)}%`;
             document.getElementById('mesAtualTexto').textContent = `${meses[mesAtual]} ${anoAtual}`;
-            document.getElementById('pacotesAtivosResumo').textContent = statsPacotes.totalPacotesAtivos;
-            document.getElementById('faturamentoPacotesResumo').textContent = Utils.formatCurrency(statsPacotes.valorTotalVendas);
-            document.getElementById('lucroPacotesResumo').textContent = Utils.formatCurrency(statsPacotes.lucroTotal);
         }
 
         // Atualizar alertas de check-in
@@ -359,13 +332,6 @@
             });
 
             tbody.innerHTML = html;
-        }
-
-        // Exportar dados
-        function exportarDados() {
-            const dados = StorageManager.exportData();
-            Utils.downloadJSON(dados, `backup-passagens-${new Date().toISOString().split('T')[0]}.json`);
-            Utils.showSuccess('Dados exportados com sucesso!');
         }
 
         // Função central que atualiza todo o dashboard (com proteção contra erros)

@@ -37,11 +37,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="pacotes.html">
-                            <i class="bi bi-box-fill"></i> Pacotes
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="cotacoes.html">
                             <i class="bi bi-calculator-fill"></i> Cotações
                         </a>
@@ -354,6 +349,11 @@
         // Inicializar
         document.addEventListener('app:ready', () => {
             modalPessoa = new bootstrap.Modal(document.getElementById('modalPessoa'));
+            const params = new URLSearchParams(window.location.search);
+            const tipoInicial = params.get('tipo');
+            if (['cliente', 'passageiro', 'fornecedor'].includes(tipoInicial)) {
+                document.getElementById('filtroTipo').value = tipoInicial;
+            }
             carregarPessoas();
             Utils.configurarFormatacaoNome(document.getElementById('nome'));
 
@@ -386,6 +386,16 @@
 
             // Busca
             document.getElementById('busca').addEventListener('input', aplicarFiltros);
+
+            if (params.get('novo') === '1') {
+                abrirModalPessoa();
+                if (['cliente', 'passageiro', 'fornecedor'].includes(tipoInicial)) {
+                    document.getElementById('tipo').value = tipoInicial;
+                    alterarCamposPorTipo();
+                }
+                window.history.replaceState({}, document.title,
+                    tipoInicial ? `pessoas.html?tipo=${encodeURIComponent(tipoInicial)}` : 'pessoas.html');
+            }
         });
 
         // Alterar campos baseado no tipo

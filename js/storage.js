@@ -435,62 +435,6 @@ const StorageManager = {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     },
 
-    clearAll() {
-        if (confirm('Tem certeza que deseja limpar TODOS os dados? Esta ação não pode ser desfeita!')) {
-            localStorage.removeItem(this.KEYS.VENDAS);
-            localStorage.removeItem(this.KEYS.PESSOAS);
-            localStorage.removeItem(this.KEYS.PACOTES);
-            localStorage.removeItem(this.KEYS.COTACOES);
-            // Manter compatibilidade com dados antigos
-            localStorage.removeItem('emissao_clientes');
-            localStorage.removeItem('emissao_fornecedores');
-            alert('Todos os dados foram removidos!');
-            location.reload();
-        }
-    },
-
-    exportData() {
-        const data = {
-            vendas: this.getTodasVendas(),
-            pessoas: this.getPessoas(),
-            pacotes: this.getPacotes(),
-            cotacoes: this.getCotacoes(),
-            exportDate: new Date().toISOString()
-        };
-        return JSON.stringify(data, null, 2);
-    },
-
-    importData(jsonString) {
-        try {
-            const data = JSON.parse(jsonString);
-            if (data.vendas) this.saveVendas(data.vendas);
-            if (data.pessoas) this.savePessoas(data.pessoas);
-            if (data.pacotes) this.savePacotes(data.pacotes);
-            if (data.cotacoes) this.saveCotacoes(data.cotacoes);
-            // Compatibilidade com exports antigos
-            if (data.clientes || data.fornecedores) {
-                const pessoas = this.getPessoas();
-                if (data.clientes) {
-                    data.clientes.forEach(c => {
-                        c.tipo = 'cliente';
-                        pessoas.push(c);
-                    });
-                }
-                if (data.fornecedores) {
-                    data.fornecedores.forEach(f => {
-                        f.tipo = 'fornecedor';
-                        pessoas.push(f);
-                    });
-                }
-                this.savePessoas(pessoas);
-            }
-            alert('Dados importados com sucesso!');
-            location.reload();
-        } catch (error) {
-            alert('Erro ao importar dados: ' + error.message);
-        }
-    },
-
     // ========== MIGRAÇÃO DE DADOS ANTIGOS ==========
     migrarDadosAntigos() {
         // Migrar clientes antigos

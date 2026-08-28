@@ -37,11 +37,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="pacotes.html">
-                            <i class="bi bi-box-fill"></i> Pacotes
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="cotacoes.html">
                             <i class="bi bi-calculator-fill"></i> Cotações
                         </a>
@@ -296,7 +291,8 @@
         // Exportar backup
         function exportarBackup() {
             try {
-                const vendas = StorageManager.getVendas();
+                // O backup inclui também vendas arquivadas, pois arquivar não é excluir.
+                const vendas = StorageManager.getTodasVendas();
                 const pessoas = StorageManager.getPessoas();
                 const cotacoes = StorageManager.getCotacoes();
                 const pacotes = StorageManager.getPacotes();
