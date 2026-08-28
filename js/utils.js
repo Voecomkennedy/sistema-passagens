@@ -259,9 +259,11 @@ const Utils = {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
 
-        // Retorna a data de referência da venda (data da venda ou cadastro)
+        // dataCadastro é a data técnica do registro, não a data comercial.
+        // Registros sem dataVenda ficam fora dos períodos e aparecem no painel
+        // de integridade para conferência manual.
         const dataDaVenda = (v) => {
-            const d = this.parseLocalDate(v.dataVenda || v.dataCadastro);
+            const d = this.parseLocalDate(v.dataVenda);
             if (!d || isNaN(d.getTime())) return null;
             d.setHours(0, 0, 0, 0);
             return d;

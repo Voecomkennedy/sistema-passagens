@@ -162,6 +162,27 @@
                                 <input type="date" class="form-control" id="dataFim" onchange="aplicarFiltros()">
                             </div>
                             <div class="col-md-2 mb-2">
+                                <label class="form-label">Situação</label>
+                                <select class="form-select" id="filtroStatusVenda" onchange="aplicarFiltros()">
+                                    <option value="todos">Todas</option>
+                                    <option value="emitida">Emitidas</option>
+                                    <option value="cancelada">Canceladas</option>
+                                    <option value="reembolso_parcial">Reembolso parcial</option>
+                                    <option value="reembolso_total">Reembolso total</option>
+                                    <option value="nao_informado">Não informado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label">Pagamento</label>
+                                <select class="form-select" id="filtroStatusPagamento" onchange="aplicarFiltros()">
+                                    <option value="todos">Todos</option>
+                                    <option value="recebido">Recebido</option>
+                                    <option value="parcial">Parcial</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="nao_informado">Não informado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
                                 <label class="form-label">Ordenar por</label>
                                 <select class="form-select" id="ordenacao" onchange="aplicarFiltros()">
                                     <option value="data_desc">Data da venda (mais recente)</option>
@@ -175,8 +196,26 @@
                                     <i class="bi bi-x-circle"></i>
                                 </button>
                             </div>
+                            <div class="col-12 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluirArquivadas" onchange="aplicarFiltros()">
+                                    <label class="form-check-label" for="incluirArquivadas">Mostrar também vendas arquivadas</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-0" id="painelIntegridade">
+                    <div>
+                        <strong><i class="bi bi-shield-exclamation me-2"></i>Revisão de integridade:</strong>
+                        <span id="resumoIntegridade">analisando registros...</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="abrirPainelIntegridade()">Ver pendências</button>
                 </div>
             </div>
         </div>
@@ -186,7 +225,7 @@
             <div class="col-md-3 col-sm-6 mb-2">
                 <div class="card stat-card">
                     <div class="card-body">
-                        <div class="stat-label">Vendas no Período</div>
+                        <div class="stat-label">Registros no Período</div>
                         <div class="stat-value" id="statTotalVendas">0</div>
                     </div>
                 </div>
@@ -194,7 +233,7 @@
             <div class="col-md-3 col-sm-6 mb-2">
                 <div class="card stat-card success">
                     <div class="card-body">
-                        <div class="stat-label">Faturamento</div>
+                        <div class="stat-label">Venda Líquida</div>
                         <div class="stat-value" id="statFaturamento">R$ 0,00</div>
                     </div>
                 </div>
@@ -202,7 +241,7 @@
             <div class="col-md-3 col-sm-6 mb-2">
                 <div class="card stat-card warning">
                     <div class="card-body">
-                        <div class="stat-label">Lucro</div>
+                        <div class="stat-label">Recebido Líquido</div>
                         <div class="stat-value" id="statLucro">R$ 0,00</div>
                     </div>
                 </div>
@@ -210,8 +249,9 @@
             <div class="col-md-3 col-sm-6 mb-2">
                 <div class="card stat-card info">
                     <div class="card-body">
-                        <div class="stat-label">Margem Média</div>
-                        <div class="stat-value" id="statMargem">0%</div>
+                        <div class="stat-label">Resultado Realizado</div>
+                        <div class="stat-value" id="statResultadoRealizado">R$ 0,00</div>
+                        <small class="text-muted" id="statResultadoObservacao"></small>
                     </div>
                 </div>
             </div>
@@ -236,14 +276,16 @@
                                         <th>Ida</th>
                                         <th>Volta</th>
                                         <th>Passageiros</th>
+                                        <th>Situação</th>
+                                        <th>Pagamento</th>
                                         <th>Valor</th>
-                                        <th>Lucro</th>
+                                        <th>Resultado</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabelaVendas">
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">
+                                        <td colspan="11" class="text-center text-muted py-4">
                                             Nenhuma venda cadastrada. Clique em "Nova Venda" para começar.
                                         </td>
                                     </tr>
@@ -704,6 +746,24 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Status do Pagamento *</label>
+                                <select class="form-select" id="statusPagamento" required onchange="toggleValorRecebido()">
+                                    <option value="recebido">Recebido integralmente</option>
+                                    <option value="parcial">Recebido parcialmente</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="nao_informado">Não informado (registro antigo)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Valor já recebido (R$) *</label>
+                                <input type="text" inputmode="numeric" class="form-control" id="valorRecebido" required placeholder="0,00"
+                                       oninput="Utils.aplicarMascaraMoeda(this); validarValoresFinanceiros();">
+                                <small class="text-muted">Usado no saldo realizado. Não altera o valor contratado da venda.</small>
+                            </div>
+                        </div>
+
                         <!-- Observações -->
                         <div class="row">
                             <div class="col-12 mb-3">
@@ -723,6 +783,84 @@
         </div>
     </div>
 
+    <div class="modal fade" id="modalMovimentoFinanceiro" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-arrow-counterclockwise me-2"></i>Cancelamento ou reembolso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="movimentoVendaId">
+                    <div class="mb-3">
+                        <label class="form-label">Nova situação *</label>
+                        <select class="form-select" id="movimentoStatusVenda" onchange="validarMovimentoFinanceiro()">
+                            <option value="emitida">Emitida / ativa</option>
+                            <option value="cancelada">Cancelada</option>
+                            <option value="reembolso_parcial">Reembolso parcial</option>
+                            <option value="reembolso_total">Reembolso total</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Valor devolvido ao cliente (R$)</label>
+                        <input type="text" inputmode="numeric" class="form-control" id="movimentoReembolsoCliente" placeholder="0,00" oninput="Utils.aplicarMascaraMoeda(this); validarMovimentoFinanceiro();">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Valor recuperado do fornecedor (R$)</label>
+                        <input type="text" inputmode="numeric" class="form-control" id="movimentoEstornoFornecedor" placeholder="0,00" oninput="Utils.aplicarMascaraMoeda(this); validarMovimentoFinanceiro();">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data do movimento *</label>
+                        <input type="date" class="form-control" id="movimentoData">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo / referência *</label>
+                        <textarea class="form-control" id="movimentoMotivo" rows="3" placeholder="Descreva o cancelamento, reembolso ou reativação"></textarea>
+                    </div>
+                    <div class="alert alert-info mb-0" id="resumoMovimentoFinanceiro"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-warning" onclick="salvarMovimentoFinanceiro()">Registrar movimento</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalIntegridade" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-shield-exclamation me-2"></i>Pendências de integridade</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Nenhum registro antigo é corrigido automaticamente. Abra a venda, confira o documento original e salve a informação correta.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead><tr><th>Registro</th><th>Tipo</th><th>Pendência</th><th></th></tr></thead>
+                            <tbody id="tabelaIntegridade"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalHistoricoVenda" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Histórico da venda</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="conteudoHistoricoVenda"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jsPDF para gerar PDF -->
@@ -735,7 +873,11 @@
 
     <script>
         let modalVenda;
+        let modalMovimentoFinanceiro;
+        let modalIntegridade;
+        let modalHistoricoVenda;
         let vendaEditandoId = null;
+        let cotacaoOrigemId = null;
         let aeroportos = AEROPORTOS_IATA; // Usar lista de aeroportos do arquivo JS
         console.log(`${aeroportos.length} aeroportos carregados`);
 
@@ -995,6 +1137,9 @@
         // Inicializar modal
         document.addEventListener('app:ready', () => {
             modalVenda = new bootstrap.Modal(document.getElementById('modalVenda'));
+            modalMovimentoFinanceiro = new bootstrap.Modal(document.getElementById('modalMovimentoFinanceiro'));
+            modalIntegridade = new bootstrap.Modal(document.getElementById('modalIntegridade'));
+            modalHistoricoVenda = new bootstrap.Modal(document.getElementById('modalHistoricoVenda'));
             carregarVendas();
             carregarClientes();
             carregarFornecedores();
@@ -1026,8 +1171,7 @@
                     try {
                         const cotacao = JSON.parse(dadosCotacao);
 
-                        // Limpar dados temporários
-                        localStorage.removeItem('cotacao_para_venda');
+                        cotacaoOrigemId = cotacao.id;
 
                         // Preencher formulário com dados da cotação
                         setTimeout(() => {
@@ -1058,7 +1202,8 @@
 
             // Companhia - tentar encontrar a companhia correspondente
             const companhias = StorageManager.getCompanhias();
-            const companhia = companhias.find(c => c.nome.toLowerCase().includes(cotacao.companhiaAerea.toLowerCase()));
+            const companhiaCotacao = String(cotacao.companhiaAerea || '').toLowerCase();
+            const companhia = companhias.find(c => companhiaCotacao && c.nome.toLowerCase().includes(companhiaCotacao));
             if (companhia) {
                 document.getElementById('companhiaAerea').value = companhia.codigo;
             }
@@ -1096,8 +1241,8 @@
             // Abrir modal
             modalVenda.show();
 
-            // Limpar URL
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // A URL e os dados temporários permanecem até a venda ser salva.
+            // Fechar o modal não converte nem altera a cotação.
 
             // Mostrar mensagem
             setTimeout(() => {
@@ -1688,10 +1833,13 @@
                 inputData.required = true;
                 inputHora.required = true;
 
-                // Só sugere o momento atual em um campo vazio. Na edição, preserva o original.
-                const agoraLocal = Utils.dataHoraLocalParaInputs();
-                if (!inputData.value) inputData.value = agoraLocal.data;
-                if (!inputHora.value) inputHora.value = agoraLocal.hora;
+                // Em nova venda manual, sugere o momento atual. Em edição,
+                // campo vazio significa que a data histórica precisa ser conferida.
+                if (!vendaEditandoId) {
+                    const agoraLocal = Utils.dataHoraLocalParaInputs();
+                    if (!inputData.value) inputData.value = agoraLocal.data;
+                    if (!inputHora.value) inputHora.value = agoraLocal.hora;
+                }
             }
         }
 
@@ -1707,11 +1855,9 @@
                 return { data: dataValida[1], hora: hora || '00:00' };
             }
 
-            if (venda.dataCadastro) {
-                return Utils.dataHoraLocalParaInputs(venda.dataCadastro);
-            }
-
-            return Utils.dataHoraLocalParaInputs();
+            // dataCadastro é a data técnica em que o registro entrou no sistema,
+            // não prova quando a venda aconteceu. Exigir conferência evita inventar histórico.
+            return { data: '', hora: '' };
         }
 
         function prepararFormularioVendaLimpo() {
@@ -1733,10 +1879,55 @@
             document.getElementById('dataVendaManual').value = '';
             document.getElementById('horaVendaManual').value = '';
             document.getElementById('dataVendaAutomatica').checked = true;
+            document.getElementById('statusPagamento').value = 'recebido';
+            document.getElementById('valorRecebido').value = '0,00';
             atualizarCamposLinksRastreamento([]);
             toggleParcelas();
             toggleDataVenda();
             calcularMargem();
+            toggleValorRecebido();
+        }
+
+        function toggleValorRecebido() {
+            const status = document.getElementById('statusPagamento').value;
+            const campo = document.getElementById('valorRecebido');
+            campo.readOnly = status !== 'parcial';
+            campo.classList.toggle('bg-light', campo.readOnly);
+
+            if (status === 'recebido') {
+                campo.value = document.getElementById('valorVenda').value || '0,00';
+            } else if (status === 'pendente' || status === 'nao_informado') {
+                campo.value = '0,00';
+            }
+            validarValoresFinanceiros();
+        }
+
+        function validarValoresFinanceiros() {
+            const venda = StorageManager.numeroParaCentavos(document.getElementById('valorVenda').value);
+            const recebido = StorageManager.numeroParaCentavos(document.getElementById('valorRecebido').value);
+            const status = document.getElementById('statusPagamento').value;
+            const campoRecebido = document.getElementById('valorRecebido');
+            let erro = '';
+            if (recebido > venda) erro = 'O valor recebido não pode ser maior que o valor da venda.';
+            else if (status === 'recebido' && recebido !== venda) erro = 'Pagamento recebido deve ter o mesmo valor da venda.';
+            else if (status === 'parcial' && (recebido <= 0 || recebido >= venda)) erro = 'Pagamento parcial deve ser maior que zero e menor que a venda.';
+            else if ((status === 'pendente' || status === 'nao_informado') && recebido !== 0) erro = 'Pagamento pendente ou não informado deve ter valor recebido igual a zero.';
+            else if (!vendaEditandoId && status === 'nao_informado') erro = 'Informe a situação do pagamento da nova venda.';
+            campoRecebido.setCustomValidity(erro);
+            return !erro;
+        }
+
+        function validarDatasVenda() {
+            const ida = document.getElementById('dataEmbarque');
+            const volta = document.getElementById('dataVolta');
+            const dataManual = document.getElementById('dataVendaManual');
+            volta.setCustomValidity(ida.value && volta.value && volta.value < ida.value
+                ? 'A data de volta não pode ser anterior à data de ida.'
+                : '');
+            const hoje = Utils.dataHoraLocalParaInputs().data;
+            const manualFutura = !document.getElementById('dataVendaAutomatica').checked && dataManual.value > hoje;
+            dataManual.setCustomValidity(manualFutura ? 'A data da venda não pode estar no futuro.' : '');
+            return !volta.validationMessage && !dataManual.validationMessage;
         }
 
         // Calcular margem em tempo real
@@ -1769,6 +1960,11 @@
             document.getElementById('lucroCalculado').textContent = Utils.formatCurrency(lucro);
             document.getElementById('margemCalculada').textContent = Utils.formatMargemLucro(margem);
             document.getElementById('margemCalculada').className = Utils.getMargemClass(margem);
+            if (document.getElementById('statusPagamento').value === 'recebido') {
+                toggleValorRecebido();
+            } else {
+                validarValoresFinanceiros();
+            }
         }
 
         // Abrir modal para nova venda
@@ -1834,6 +2030,8 @@
                 document.getElementById('valorLucro').value = Utils.numeroParaMoeda(lucroRegistrado);
                 document.getElementById('valorMilhas').value = venda.valorMilhas ? Utils.numeroParaMoeda(venda.valorMilhas) : '';
                 document.getElementById('formaPagamento').value = venda.formaPagamento;
+                document.getElementById('statusPagamento').value = venda.statusPagamento || 'nao_informado';
+                document.getElementById('valorRecebido').value = Utils.numeroParaMoeda(venda.valorRecebido || 0);
                 document.getElementById('observacoes').value = venda.observacoes || '';
 
                 // Link de rastreamento
@@ -1845,6 +2043,11 @@
                 // Parcelas
                 toggleParcelas();
                 document.getElementById('parcelas').value = venda.parcelas || '1';
+                const recebidoOriginal = venda.valorRecebido;
+                toggleValorRecebido();
+                if (venda.statusPagamento === 'parcial' && recebidoOriginal !== undefined) {
+                    document.getElementById('valorRecebido').value = Utils.numeroParaMoeda(recebidoOriginal);
+                }
 
                 // Em edição a data sempre parte do valor histórico, nunca do momento atual.
                 const dataHoraOriginal = obterDataHoraOriginalVenda(venda);
@@ -1892,6 +2095,8 @@
         function salvarVenda() {
             const form = document.getElementById('formVenda');
             calcularMargem();
+            validarDatasVenda();
+            validarValoresFinanceiros();
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
@@ -1985,6 +2190,10 @@
                     StorageManager.numeroParaCentavos(document.getElementById('valorMilhas').value)
                 ),
                 formaPagamento: document.getElementById('formaPagamento').value,
+                statusPagamento: document.getElementById('statusPagamento').value,
+                valorRecebido: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('valorRecebido').value)
+                ),
                 parcelas: parseInt(document.getElementById('parcelas').value) || 1,
                 observacoes: document.getElementById('observacoes').value,
                 linksRastreamento: linksRastreamento,
@@ -2018,26 +2227,184 @@
                 if (!continuar) return;
             }
 
+            let vendaSalva;
             if (vendaEditandoId) {
-                StorageManager.updateVenda(vendaEditandoId, venda);
+                vendaSalva = StorageManager.updateVenda(vendaEditandoId, venda);
                 Utils.showSuccess('Venda atualizada com sucesso!');
             } else {
-                StorageManager.addVenda(venda);
+                venda.statusVenda = 'emitida';
+                vendaSalva = StorageManager.addVenda(venda);
                 Utils.showSuccess('Venda cadastrada com sucesso!');
+            }
+
+            if (vendaSalva && cotacaoOrigemId) {
+                StorageManager.concluirConversaoCotacao(cotacaoOrigemId, vendaSalva.id);
+                localStorage.removeItem('cotacao_para_venda');
+                cotacaoOrigemId = null;
+                history.replaceState({}, document.title, 'vendas.html');
             }
 
             modalVenda.hide();
             carregarVendas();
         }
 
-        // Excluir venda
+        // Arquivar preserva o registro e todo o histórico.
         function excluirVenda(id) {
-            if (!Utils.confirm('Tem certeza que deseja excluir esta venda?')) return;
+            if (!Utils.confirm('Arquivar esta venda? Ela sairá dos relatórios, mas poderá ser restaurada.')) return;
 
             if (StorageManager.deleteVenda(id)) {
-                Utils.showSuccess('Venda excluída com sucesso!');
+                Utils.showSuccess('Venda arquivada com sucesso!');
                 carregarVendas();
             }
+        }
+
+        function restaurarVenda(id) {
+            if (!Utils.confirm('Restaurar esta venda para a lista ativa e para os relatórios?')) return;
+            if (StorageManager.restaurarVenda(id)) {
+                Utils.showSuccess('Venda restaurada com sucesso!');
+                carregarVendas();
+            }
+        }
+
+        function abrirMovimentoFinanceiro(id) {
+            const venda = StorageManager.getVendaById(id);
+            if (!venda || venda.excluidaEm) return;
+            document.getElementById('movimentoVendaId').value = venda.id;
+            document.getElementById('movimentoStatusVenda').value = StorageManager.normalizarStatusVenda(venda);
+            document.getElementById('movimentoReembolsoCliente').value = Utils.numeroParaMoeda(venda.valorReembolsadoCliente || 0);
+            document.getElementById('movimentoEstornoFornecedor').value = Utils.numeroParaMoeda(venda.valorEstornadoFornecedor || 0);
+            document.getElementById('movimentoData').value = venda.dataMovimentoFinanceiro || Utils.dataHoraLocalParaInputs().data;
+            document.getElementById('movimentoMotivo').value = venda.motivoCancelamento || '';
+            validarMovimentoFinanceiro();
+            modalMovimentoFinanceiro.show();
+        }
+
+        function validarMovimentoFinanceiro() {
+            const venda = StorageManager.getVendaById(document.getElementById('movimentoVendaId').value);
+            if (!venda) return false;
+            const status = document.getElementById('movimentoStatusVenda').value;
+            const reembolso = StorageManager.numeroParaCentavos(document.getElementById('movimentoReembolsoCliente').value);
+            const estorno = StorageManager.numeroParaCentavos(document.getElementById('movimentoEstornoFornecedor').value);
+            const recebido = StorageManager.numeroParaCentavos(venda.valorRecebido);
+            const custo = StorageManager.numeroParaCentavos(venda.valorCusto);
+            const resumo = document.getElementById('resumoMovimentoFinanceiro');
+            const erros = [];
+
+            if (reembolso > recebido) erros.push('o reembolso ao cliente supera o valor registrado como recebido');
+            if (estorno > custo) erros.push('o estorno do fornecedor supera o custo da venda');
+            if (status === 'reembolso_parcial' && (reembolso <= 0 || reembolso >= recebido)) {
+                erros.push('reembolso parcial deve ser maior que zero e menor que o valor recebido');
+            }
+            if (status === 'reembolso_total' && reembolso !== recebido) {
+                erros.push('reembolso total deve ser igual ao valor recebido');
+            }
+            if (status === 'emitida' && reembolso > 0) {
+                erros.push('uma venda emitida não pode manter reembolso; use reembolso parcial ou total');
+            }
+
+            const receitaLiquida = Math.max(0, recebido - reembolso);
+            const custoLiquido = Math.max(0, custo - estorno);
+            resumo.className = `alert mb-0 ${erros.length ? 'alert-danger' : 'alert-info'}`;
+            resumo.innerHTML = erros.length
+                ? `<strong>Corrija antes de salvar:</strong> ${Utils.escapeHTML(erros.join('; '))}.`
+                : `<strong>Após o movimento:</strong> recebido líquido ${Utils.escapeHTML(Utils.formatCurrency(StorageManager.centavosParaNumero(receitaLiquida)))}; custo líquido ${Utils.escapeHTML(Utils.formatCurrency(StorageManager.centavosParaNumero(custoLiquido)))}; resultado realizado ${Utils.escapeHTML(Utils.formatCurrency(StorageManager.centavosParaNumero(receitaLiquida - custoLiquido)))}.`;
+            return erros.length === 0;
+        }
+
+        function salvarMovimentoFinanceiro() {
+            const id = document.getElementById('movimentoVendaId').value;
+            const data = document.getElementById('movimentoData').value;
+            const motivo = document.getElementById('movimentoMotivo').value.trim();
+            const hoje = Utils.dataHoraLocalParaInputs().data;
+            if (!validarMovimentoFinanceiro()) return;
+            if (!data || data > hoje) {
+                Utils.showError('Informe uma data válida, que não esteja no futuro.');
+                return;
+            }
+            if (!motivo) {
+                Utils.showError('Descreva o motivo ou a referência do movimento.');
+                return;
+            }
+
+            const atualizado = StorageManager.updateVenda(id, {
+                statusVenda: document.getElementById('movimentoStatusVenda').value,
+                valorReembolsadoCliente: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('movimentoReembolsoCliente').value)
+                ),
+                valorEstornadoFornecedor: StorageManager.centavosParaNumero(
+                    StorageManager.numeroParaCentavos(document.getElementById('movimentoEstornoFornecedor').value)
+                ),
+                dataMovimentoFinanceiro: data,
+                motivoCancelamento: motivo,
+                acaoHistorico: 'movimento_financeiro'
+            });
+            if (!atualizado) {
+                Utils.showError('Não foi possível atualizar a venda.');
+                return;
+            }
+            modalMovimentoFinanceiro.hide();
+            Utils.showSuccess('Movimento financeiro registrado sem apagar o histórico.');
+            carregarVendas();
+        }
+
+        function atualizarResumoIntegridade() {
+            const problemas = StorageManager.analisarIntegridadeVendas();
+            const vendasAfetadas = new Set(problemas.map(p => String(p.vendaId))).size;
+            const resumo = document.getElementById('resumoIntegridade');
+            const painel = document.getElementById('painelIntegridade');
+            resumo.textContent = problemas.length
+                ? `${problemas.length} pendência(s) em ${vendasAfetadas} venda(s). Nenhuma foi alterada automaticamente.`
+                : 'nenhuma pendência detectada.';
+            painel.classList.toggle('alert-warning', problemas.length > 0);
+            painel.classList.toggle('alert-success', problemas.length === 0);
+        }
+
+        function abrirPainelIntegridade() {
+            const problemas = StorageManager.analisarIntegridadeVendas();
+            const labels = {
+                data_venda: 'Data da venda',
+                status_venda: 'Situação',
+                status_pagamento: 'Pagamento',
+                data_viagem: 'Datas da viagem',
+                valor_financeiro: 'Valores financeiros',
+                localizador_duplicado: 'Duplicidade'
+            };
+            const tbody = document.getElementById('tabelaIntegridade');
+            tbody.innerHTML = problemas.length ? problemas.map(problema => `
+                <tr>
+                    <td><strong>${Utils.escapeHTML(problema.identificador)}</strong></td>
+                    <td>${Utils.escapeHTML(labels[problema.tipo] || problema.tipo)}</td>
+                    <td>${Utils.escapeHTML(problema.descricao)}</td>
+                    <td><button type="button" class="btn btn-sm btn-outline-primary" onclick="modalIntegridade.hide(); abrirModalVenda(${Utils.literalJSSeguro(problema.vendaId)})">Revisar</button></td>
+                </tr>
+            `).join('') : '<tr><td colspan="4" class="text-center text-success py-4">Nenhuma pendência detectada.</td></tr>';
+            modalIntegridade.show();
+        }
+
+        function abrirHistoricoVenda(id) {
+            const venda = StorageManager.getVendaById(id);
+            if (!venda) return;
+            const cliente = StorageManager.getClienteById(venda.clienteId);
+            const historico = Array.isArray(venda.historicoAlteracoes) ? [...venda.historicoAlteracoes] : [];
+            const labelsAcao = {
+                criacao: 'Venda criada',
+                edicao: 'Venda editada',
+                movimento_financeiro: 'Movimento financeiro',
+                arquivamento: 'Venda arquivada',
+                restauracao: 'Venda restaurada'
+            };
+            const localizador = StorageManager.getCodigosVenda(venda).join(' | ') || 'Sem localizador';
+            const cabecalho = `<p><strong>${Utils.escapeHTML(cliente?.nome || 'Cliente não identificado')}</strong><br><span class="text-muted">${Utils.escapeHTML(localizador)}</span></p>`;
+            const eventos = historico.length ? `<div class="list-group">${historico.reverse().map(evento => {
+                const data = new Date(evento.data);
+                const dataTexto = Number.isNaN(data.getTime()) ? evento.data : data.toLocaleString('pt-BR');
+                const campos = Array.isArray(evento.campos) && evento.campos.length
+                    ? `<div class="small text-muted mt-1">Campos alterados: ${Utils.escapeHTML(evento.campos.join(', '))}</div>`
+                    : '';
+                return `<div class="list-group-item"><strong>${Utils.escapeHTML(labelsAcao[evento.acao] || evento.acao || 'Alteração')}</strong><div class="small">${Utils.escapeHTML(dataTexto)}</div>${campos}</div>`;
+            }).join('')}</div>` : '<div class="alert alert-secondary">Registro antigo: não havia trilha de alterações antes desta versão.</div>';
+            document.getElementById('conteudoHistoricoVenda').innerHTML = cabecalho + eventos;
+            modalHistoricoVenda.show();
         }
 
         // Editar venda
@@ -2353,6 +2720,7 @@
 
         // Carregar e exibir vendas
         function carregarVendas() {
+            atualizarResumoIntegridade();
             aplicarFiltros();
         }
 
@@ -2373,7 +2741,21 @@
 
         // Aplicar filtros
         function aplicarFiltros() {
-            let vendas = StorageManager.getVendas();
+            const incluirArquivadas = document.getElementById('incluirArquivadas').checked;
+            let vendas = StorageManager.getVendas(true);
+            if (!incluirArquivadas) vendas = vendas.filter(venda => !venda.excluidaEm);
+
+            const statusVenda = document.getElementById('filtroStatusVenda').value;
+            if (statusVenda !== 'todos') {
+                vendas = vendas.filter(venda => statusVenda === 'nao_informado'
+                    ? !venda.statusVenda
+                    : venda.statusVenda && StorageManager.normalizarStatusVenda(venda) === statusVenda);
+            }
+
+            const statusPagamento = document.getElementById('filtroStatusPagamento').value;
+            if (statusPagamento !== 'todos') {
+                vendas = vendas.filter(venda => StorageManager.normalizarStatusPagamento(venda) === statusPagamento);
+            }
 
             // Filtro de busca
             const busca = _normalizar(document.getElementById('busca').value).trim();
@@ -2442,7 +2824,7 @@
             }
 
             // Atualizar mini dashboard se houver filtro ativo
-            atualizarMiniDashboard(vendas, periodo);
+            atualizarMiniDashboard(vendas.filter(venda => !venda.excluidaEm), periodo);
 
             exibirVendas(vendas);
         }
@@ -2451,12 +2833,6 @@
         function atualizarMiniDashboard(vendas, periodo) {
             const miniDashboard = document.getElementById('miniDashboard');
 
-            // Mostrar mini dashboard apenas se houver filtro ativo (não "todos")
-            if (periodo === 'todos') {
-                miniDashboard.style.display = 'none';
-                return;
-            }
-
             miniDashboard.style.display = 'flex';
 
             // Calcular estatísticas
@@ -2464,8 +2840,11 @@
 
             document.getElementById('statTotalVendas').textContent = stats.totalVendas;
             document.getElementById('statFaturamento').textContent = Utils.formatCurrency(stats.valorTotalVendas);
-            document.getElementById('statLucro').textContent = Utils.formatCurrency(stats.lucroTotal);
-            document.getElementById('statMargem').textContent = stats.margemLucroMedia.toFixed(2) + '%';
+            document.getElementById('statLucro').textContent = Utils.formatCurrency(stats.valorRecebido);
+            document.getElementById('statResultadoRealizado').textContent = Utils.formatCurrency(stats.lucroRealizado);
+            document.getElementById('statResultadoObservacao').textContent = stats.pagamentosNaoInformados
+                ? `${stats.pagamentosNaoInformados} pagamento(s) fora do cálculo por falta de informação`
+                : 'Todos os pagamentos informados';
         }
 
         // Exibir vendas na tabela
@@ -2476,7 +2855,7 @@
             if (vendas.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
+                        <td colspan="11" class="text-center text-muted py-4">
                             Nenhuma venda encontrada com os filtros aplicados.
                         </td>
                     </tr>
@@ -2487,8 +2866,26 @@
             let html = '';
             vendas.forEach(venda => {
                 const cliente = StorageManager.getClienteById(venda.clienteId);
-                const lucro = Utils.calcularLucro(venda.valorVenda, venda.valorCusto);
-                const margemClass = Utils.getMargemClass(Utils.calcularMargemLucro(venda.valorVenda, venda.valorCusto));
+                const financeiro = StorageManager.obterResumoFinanceiroVenda(venda);
+                const margemClass = Utils.getMargemClass(financeiro.receitaProjetada > 0
+                    ? financeiro.lucroProjetado / financeiro.receitaProjetada * 100
+                    : 0);
+                const statusVendaLabels = {
+                    emitida: ['Emitida', 'bg-success'],
+                    cancelada: ['Cancelada', 'bg-danger'],
+                    reembolso_parcial: ['Reembolso parcial', 'bg-warning text-dark'],
+                    reembolso_total: ['Reembolso total', 'bg-danger']
+                };
+                const statusPagamentoLabels = {
+                    recebido: ['Recebido', 'bg-success'],
+                    parcial: ['Parcial', 'bg-warning text-dark'],
+                    pendente: ['Pendente', 'bg-danger'],
+                    nao_informado: ['Não informado', 'bg-secondary']
+                };
+                const statusVendaInfo = venda.statusVenda
+                    ? statusVendaLabels[financeiro.statusVenda]
+                    : ['Não informado', 'bg-secondary'];
+                const statusPagamentoInfo = statusPagamentoLabels[financeiro.statusPagamento];
 
                 const voltaTexto = venda.dataVolta
                     ? Utils.escapeHTML(Utils.formatDate(venda.dataVolta)) + (venda.companhiaAereaVolta ? ` <small class="badge bg-warning text-dark">${Utils.escapeHTML(venda.companhiaAereaVolta)}</small>` : '')
@@ -2517,19 +2914,25 @@
                     : '';
 
                 html += `
-                    <tr>
+                    <tr class="${venda.excluidaEm ? 'table-secondary opacity-75' : ''}">
                         <td><strong>${Utils.escapeHTML(localizadoresDisplay)}</strong>${tipoVendaBadge}</td>
                         <td>${Utils.escapeHTML(cliente ? cliente.nome : 'N/A')}</td>
                         <td>${Utils.escapeHTML(nomeOrigem)} → ${Utils.escapeHTML(nomeDestino)}</td>
                         <td>${Utils.escapeHTML(Utils.formatDate(venda.dataEmbarque))}</td>
                         <td>${voltaTexto}</td>
                         <td>${Utils.escapeHTML(venda.quantidadePassageiros)} pax</td>
-                        <td>${Utils.escapeHTML(Utils.formatCurrency(venda.valorVenda))}</td>
-                        <td class="${margemClass}">${Utils.escapeHTML(Utils.formatCurrency(lucro))}</td>
+                        <td><span class="badge ${statusVendaInfo[1]}">${statusVendaInfo[0]}</span>${venda.excluidaEm ? '<br><span class="badge bg-dark mt-1">Arquivada</span>' : ''}</td>
+                        <td><span class="badge ${statusPagamentoInfo[1]}">${statusPagamentoInfo[0]}</span></td>
+                        <td>${Utils.escapeHTML(Utils.formatCurrency(financeiro.receitaProjetada))}${financeiro.receitaProjetada !== financeiro.valorVenda ? `<br><small class="text-muted">Original: ${Utils.escapeHTML(Utils.formatCurrency(financeiro.valorVenda))}</small>` : ''}</td>
+                        <td class="${margemClass}">${Utils.escapeHTML(Utils.formatCurrency(financeiro.lucroProjetado))}</td>
                         <td>
-                            <i class="bi bi-pencil-square action-icon edit" onclick="abrirModalVenda(${Utils.literalJSSeguro(venda.id)})" title="Editar"></i>
-                            <i class="bi bi-file-pdf action-icon" style="color: #dc3545;" onclick="gerarPDF(${Utils.literalJSSeguro(venda.id)})" title="Gerar PDF"></i>
-                            <i class="bi bi-trash action-icon delete" onclick="excluirVenda(${Utils.literalJSSeguro(venda.id)})" title="Excluir"></i>
+                            ${venda.excluidaEm
+                                ? `<i class="bi bi-arrow-counterclockwise action-icon text-success" onclick="restaurarVenda(${Utils.literalJSSeguro(venda.id)})" title="Restaurar"></i>`
+                                : `<i class="bi bi-pencil-square action-icon edit" onclick="abrirModalVenda(${Utils.literalJSSeguro(venda.id)})" title="Editar"></i>
+                                   <i class="bi bi-file-pdf action-icon" style="color: #dc3545;" onclick="gerarPDF(${Utils.literalJSSeguro(venda.id)})" title="Gerar PDF"></i>
+                                   <i class="bi bi-arrow-counterclockwise action-icon text-warning" onclick="abrirMovimentoFinanceiro(${Utils.literalJSSeguro(venda.id)})" title="Cancelamento ou reembolso"></i>
+                                   <i class="bi bi-archive action-icon delete" onclick="excluirVenda(${Utils.literalJSSeguro(venda.id)})" title="Arquivar"></i>`}
+                            <i class="bi bi-clock-history action-icon text-secondary" onclick="abrirHistoricoVenda(${Utils.literalJSSeguro(venda.id)})" title="Ver histórico"></i>
                         </td>
                     </tr>
                 `;
@@ -2543,6 +2946,9 @@
             document.getElementById('busca').value = '';
             document.getElementById('filtroPeriodo').value = 'todos';
             document.getElementById('ordenacao').value = 'data_desc';
+            document.getElementById('filtroStatusVenda').value = 'todos';
+            document.getElementById('filtroStatusPagamento').value = 'todos';
+            document.getElementById('incluirArquivadas').checked = false;
             document.getElementById('dataInicio').value = '';
             document.getElementById('dataFim').value = '';
             toggleDataCustomizada();

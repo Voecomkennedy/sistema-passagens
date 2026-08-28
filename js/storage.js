@@ -36,9 +36,16 @@ const StorageManager = {
     },
 
     // ========== VENDAS ==========
-    getVendas() {
+    getTodasVendas() {
         const data = localStorage.getItem(this.KEYS.VENDAS);
         return data ? JSON.parse(data) : [];
+    },
+
+    // Por padrão, telas e relatórios recebem apenas vendas ativas. As arquivadas
+    // continuam armazenadas e podem ser restauradas, evitando perda de histórico.
+    getVendas(incluirArquivadas = false) {
+        const vendas = this.getTodasVendas();
+        return incluirArquivadas ? vendas : vendas.filter(v => !v.excluidaEm);
     },
 
     saveVendas(vendas) {
@@ -46,19 +53,46 @@ const StorageManager = {
     },
 
     addVenda(venda) {
-        const vendas = this.getVendas();
+        const vendas = this.getTodasVendas();
+        const agora = new Date().toISOString();
         venda.id = this.generateId();
-        venda.dataCadastro = new Date().toISOString();
+        venda.dataCadastro = agora;
+        venda.dataAtualizacao = agora;
+        venda.historicoAlteracoes = [{ data: agora, acao: 'criacao', campos: [] }];
         vendas.push(venda);
         this.saveVendas(vendas);
         return venda;
     },
 
     updateVenda(id, vendaAtualizada) {
-        const vendas = this.getVendas();
+        const vendas = this.getTodasVendas();
         const index = vendas.findIndex(v => v.id === id);
         if (index !== -1) {
-            vendas[index] = { ...vendas[index], ...vendaAtualizada };
+            const anterior = vendas[index];
+            const camposIgnorados = new Set(['historicoAlteracoes', 'dataAtualizacao']);
+            const camposAlterados = Object.keys(vendaAtualizada).filter(campo =>
+                !camposIgnorados.has(campo) &&
+                JSON.stringify(anterior[campo]) !== JSON.stringify(vendaAtualizada[campo])
+            );
+            const agora = new Date().toISOString();
+            const historico = Array.isArray(anterior.historicoAlteracoes)
+                ? [...anterior.historicoAlteracoes]
+                : [];
+            if (camposAlterados.length) {
+                historico.push({
+                    data: agora,
+                    acao: vendaAtualizada.acaoHistorico || 'edicao',
+                    campos: camposAlterados.filter(campo => campo !== 'acaoHistorico')
+                });
+            }
+            const dados = { ...vendaAtualizada };
+            delete dados.acaoHistorico;
+            vendas[index] = {
+                ...anterior,
+                ...dados,
+                dataAtualizacao: agora,
+                historicoAlteracoes: historico
+            };
             this.saveVendas(vendas);
             return vendas[index];
         }
@@ -66,15 +100,113 @@ const StorageManager = {
     },
 
     deleteVenda(id) {
-        const vendas = this.getVendas();
-        const filtered = vendas.filter(v => v.id !== id);
-        this.saveVendas(filtered);
-        return filtered.length < vendas.length;
+        return !!this.updateVenda(id, {
+            excluidaEm: new Date().toISOString(),
+            acaoHistorico: 'arquivamento'
+        });
+    },
+
+    restaurarVenda(id) {
+        return !!this.updateVenda(id, {
+            excluidaEm: null,
+            acaoHistorico: 'restauracao'
+        });
     },
 
     getVendaById(id) {
-        const vendas = this.getVendas();
+        const vendas = this.getTodasVendas();
         return vendas.find(v => v.id === id);
+    },
+
+    normalizarStatusVenda(venda) {
+        const status = String(venda?.statusVenda || '').toLowerCase();
+        return ['emitida', 'cancelada', 'reembolso_parcial', 'reembolso_total'].includes(status)
+            ? status
+            : 'emitida';
+    },
+
+    normalizarStatusPagamento(venda) {
+        const status = String(venda?.statusPagamento || '').toLowerCase();
+        return ['recebido', 'parcial', 'pendente', 'nao_informado'].includes(status)
+            ? status
+            : 'nao_informado';
+    },
+
+    obterResumoFinanceiroVenda(venda) {
+        const statusVenda = this.normalizarStatusVenda(venda);
+        const statusPagamento = this.normalizarStatusPagamento(venda);
+        const valorVenda = this.numeroParaCentavos(venda?.valorVenda);
+        const valorCusto = this.numeroParaCentavos(venda?.valorCusto);
+        const valorRecebidoInformado = this.numeroParaCentavos(venda?.valorRecebido);
+        const valorRecebido = statusPagamento === 'recebido' && venda?.valorRecebido === undefined
+            ? valorVenda
+            : valorRecebidoInformado;
+        const valorReembolsado = this.numeroParaCentavos(venda?.valorReembolsadoCliente);
+        const valorEstornado = this.numeroParaCentavos(venda?.valorEstornadoFornecedor);
+        const cancelada = statusVenda === 'cancelada' || statusVenda === 'reembolso_total';
+        const receitaProjetada = cancelada ? 0 : Math.max(0, valorVenda - valorReembolsado);
+        const custoLiquido = Math.max(0, valorCusto - valorEstornado);
+        const receitaRealizada = Math.max(0, valorRecebido - valorReembolsado);
+        const realizadoConhecido = statusPagamento !== 'nao_informado';
+
+        return {
+            statusVenda,
+            statusPagamento,
+            valorVenda: this.centavosParaNumero(valorVenda),
+            valorCusto: this.centavosParaNumero(valorCusto),
+            receitaProjetada: this.centavosParaNumero(receitaProjetada),
+            custoLiquido: this.centavosParaNumero(custoLiquido),
+            lucroProjetado: this.centavosParaNumero(receitaProjetada - custoLiquido),
+            receitaRealizada: realizadoConhecido ? this.centavosParaNumero(receitaRealizada) : null,
+            lucroRealizado: realizadoConhecido ? this.centavosParaNumero(receitaRealizada - custoLiquido) : null,
+            realizadoConhecido
+        };
+    },
+
+    analisarIntegridadeVendas() {
+        const vendas = this.getVendas();
+        const problemas = [];
+        const codigos = new Map();
+
+        vendas.forEach(venda => {
+            const identificador = this.getCodigosVenda(venda).join(' | ') || venda.numeroCompra || venda.id;
+            const adicionar = (tipo, descricao) => problemas.push({
+                tipo, vendaId: venda.id, identificador, descricao
+            });
+
+            if (!venda.dataVenda) adicionar('data_venda', 'Data original da venda não informada');
+            if (!venda.statusVenda) adicionar('status_venda', 'Status da venda não informado');
+            if (!venda.statusPagamento || this.normalizarStatusPagamento(venda) === 'nao_informado') {
+                adicionar('status_pagamento', 'Status do pagamento não informado');
+            }
+            if (venda.dataEmbarque && venda.dataVolta && venda.dataVolta < venda.dataEmbarque) {
+                adicionar('data_viagem', 'Data de volta anterior à data de ida');
+            }
+            const vendaCentavos = this.numeroParaCentavos(venda.valorVenda);
+            const custoCentavos = this.numeroParaCentavos(venda.valorCusto);
+            const recebidoCentavos = this.numeroParaCentavos(venda.valorRecebido);
+            const reembolsoCentavos = this.numeroParaCentavos(venda.valorReembolsadoCliente);
+            const estornoCentavos = this.numeroParaCentavos(venda.valorEstornadoFornecedor);
+            if (recebidoCentavos > vendaCentavos) adicionar('valor_financeiro', 'Valor recebido supera o valor da venda');
+            if (reembolsoCentavos > recebidoCentavos) adicionar('valor_financeiro', 'Reembolso supera o valor recebido');
+            if (estornoCentavos > custoCentavos) adicionar('valor_financeiro', 'Estorno do fornecedor supera o custo');
+            this.getCodigosVenda(venda).forEach(codigo => {
+                if (!codigos.has(codigo)) codigos.set(codigo, []);
+                codigos.get(codigo).push(venda);
+            });
+        });
+
+        codigos.forEach((registros, codigo) => {
+            if (registros.length < 2) return;
+            registros.forEach(venda => problemas.push({
+                tipo: 'localizador_duplicado',
+                vendaId: venda.id,
+                identificador: codigo,
+                descricao: `Localizador aparece em ${registros.length} vendas`
+            }));
+        });
+
+        return problemas;
     },
 
     normalizarCodigoVenda(valor) {
@@ -285,12 +417,17 @@ const StorageManager = {
         return this.getCotacoes().find(c => c.id === id);
     },
 
-    // Marca a cotação como convertida e retorna seus dados (para pré-preencher a venda)
+    // A cotação só será marcada como convertida depois que a venda for salva.
     converterCotacaoParaVenda(id) {
-        const cotacao = this.getCotacaoById(id);
-        if (!cotacao) return null;
-        this.updateCotacao(id, { status: 'convertida', dataConversao: new Date().toISOString() });
-        return cotacao;
+        return this.getCotacaoById(id) || null;
+    },
+
+    concluirConversaoCotacao(id, vendaId) {
+        return this.updateCotacao(id, {
+            status: 'convertida',
+            dataConversao: new Date().toISOString(),
+            vendaId
+        });
     },
 
     // ========== UTILIDADES ==========
@@ -314,7 +451,7 @@ const StorageManager = {
 
     exportData() {
         const data = {
-            vendas: this.getVendas(),
+            vendas: this.getTodasVendas(),
             pessoas: this.getPessoas(),
             pacotes: this.getPacotes(),
             cotacoes: this.getCotacoes(),
@@ -413,11 +550,16 @@ const StorageManager = {
     calcularStatsPeriodo(vendas) {
         const lista = vendas || [];
         const totalVendas = lista.length;
-        const vendasCentavos = this.somarCampoEmCentavos(lista, v => v.valorVenda);
-        const custosCentavos = this.somarCampoEmCentavos(lista, v => v.valorCusto);
+        const resumos = lista.map(v => this.obterResumoFinanceiroVenda(v));
+        const vendasCentavos = this.somarCampoEmCentavos(resumos, r => r.receitaProjetada);
+        const custosCentavos = this.somarCampoEmCentavos(resumos, r => r.custoLiquido);
+        const recebidoCentavos = this.somarCampoEmCentavos(resumos, r => r.receitaRealizada);
+        const lucroRealizadoCentavos = this.somarCampoEmCentavos(resumos, r => r.lucroRealizado);
         const valorTotalVendas = this.centavosParaNumero(vendasCentavos);
         const valorTotalCusto = this.centavosParaNumero(custosCentavos);
         const lucroTotal = this.centavosParaNumero(vendasCentavos - custosCentavos);
+        const valorRecebido = this.centavosParaNumero(recebidoCentavos);
+        const lucroRealizado = this.centavosParaNumero(lucroRealizadoCentavos);
         const margemLucroMedia = valorTotalVendas > 0 ? (lucroTotal / valorTotalVendas * 100) : 0;
 
         return {
@@ -425,6 +567,10 @@ const StorageManager = {
             valorTotalVendas,
             valorTotalCusto,
             lucroTotal,
+            valorRecebido,
+            lucroRealizado,
+            pagamentosNaoInformados: resumos.filter(r => r.statusPagamento === 'nao_informado').length,
+            vendasCanceladas: resumos.filter(r => r.statusVenda === 'cancelada' || r.statusVenda === 'reembolso_total').length,
             margemLucroMedia
         };
     },
@@ -469,7 +615,7 @@ const StorageManager = {
         const anoAtual = now.getFullYear();
 
         const parseData = (v) => {
-            const raw = v.dataVenda || v.dataCadastro;
+            const raw = v.dataVenda;
             if (!raw) return null;
             // Aceita "YYYY-MM-DD" e ISO; pega só ano-mês de forma segura
             const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(raw));

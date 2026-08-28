@@ -1645,7 +1645,7 @@
 
         // Converter para venda
         function converterParaVenda(id) {
-            if (!confirm('Deseja converter esta cotação para uma venda? A cotação será marcada como "Convertida".')) return;
+            if (!confirm('Deseja usar esta cotação para preencher uma nova venda? Ela só será marcada como "Convertida" depois que a venda for salva.')) return;
 
             const cotacao = StorageManager.converterCotacaoParaVenda(id);
             if (!cotacao) {
