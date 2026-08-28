@@ -134,6 +134,59 @@ body {
     box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
 }
 
+.navbar .nav-link {
+    white-space: nowrap;
+}
+
+.navbar .dropdown-menu {
+    min-width: 230px;
+    padding: 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+}
+
+.navbar .dropdown-item {
+    color: var(--primary-color);
+    font-size: 0.86rem;
+    font-weight: 600;
+    padding: 9px 11px;
+    border-radius: var(--radius-sm);
+}
+
+.navbar .dropdown-item i {
+    color: var(--secondary-dark);
+    display: inline-block;
+    margin-right: 6px;
+    text-align: center;
+    width: 18px;
+}
+
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+    color: var(--primary-color);
+    background: rgba(212, 175, 55, 0.16);
+}
+
+.navbar .dropdown-item.active {
+    color: var(--dark);
+    background: var(--secondary-color);
+}
+
+@media (min-width: 992px) {
+    .navbar .nav-link {
+        font-size: 0.86rem;
+        margin: 0 2px;
+        padding: 9px 11px !important;
+    }
+}
+
+@media (max-width: 991px) {
+    .navbar .dropdown-menu {
+        margin: 4px 5px 8px;
+    }
+}
+
 /* ========================================
    CARDS - Design Moderno
    ======================================== */
