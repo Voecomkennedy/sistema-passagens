@@ -1119,8 +1119,41 @@
             }
         }
 
-        // Gerar PDF
-        function gerarPDFCotacao(id) {
+        async function carregarImagemParaPDF(caminho) {
+            try {
+                const resposta = await fetch(caminho);
+                if (!resposta.ok) throw new Error(`Falha ao carregar imagem: ${resposta.status}`);
+                const blob = await resposta.blob();
+                return await new Promise((resolve, reject) => {
+                    const imagem = new Image();
+                    const url = URL.createObjectURL(blob);
+                    imagem.onload = () => {
+                        const tamanho = 256;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = tamanho;
+                        canvas.height = tamanho;
+                        const contexto = canvas.getContext('2d');
+                        contexto.beginPath();
+                        contexto.arc(tamanho / 2, tamanho / 2, tamanho / 2, 0, Math.PI * 2);
+                        contexto.clip();
+                        contexto.drawImage(imagem, 0, 0, tamanho, tamanho);
+                        URL.revokeObjectURL(url);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    imagem.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        reject(new Error('Imagem inválida'));
+                    };
+                    imagem.src = url;
+                });
+            } catch (error) {
+                console.warn('Logo não pôde ser carregada no PDF:', error);
+                return null;
+            }
+        }
+
+        // Gerar proposta em A4 real, sem depender da impressão do navegador.
+        async function gerarPDFCotacao(id) {
             try {
                 const cotacao = StorageManager.getCotacaoById(id);
                 if (!cotacao) {
@@ -1134,354 +1167,310 @@
                 }
 
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+                const larguraPagina = doc.internal.pageSize.getWidth();
+                const alturaPagina = doc.internal.pageSize.getHeight();
+                const margem = 13;
+                const larguraConteudo = larguraPagina - (margem * 2);
+                const cores = {
+                    azul: [2, 30, 58],
+                    azulClaro: [10, 55, 94],
+                    dourado: [211, 166, 64],
+                    texto: [34, 52, 68],
+                    cinza: [102, 115, 126],
+                    borda: [220, 226, 231],
+                    fundo: [246, 248, 250],
+                    verde: [32, 112, 72],
+                    verdeFundo: [235, 247, 239],
+                    amareloFundo: [255, 248, 226]
+                };
 
-                // ========== PRIMEIRA FAIXA - CABEÇALHO AZUL ESCURO ==========
-                doc.setFillColor(26, 54, 93);
-                doc.rect(0, 0, 210, 35, 'F');
+                const codigoOrigem = String(cotacao.origem || '').toUpperCase();
+                const codigoDestino = String(cotacao.destino || '').toUpperCase();
+                const aeroportoOrigem = AEROPORTOS_IATA.find(a => a.codigo === codigoOrigem);
+                const aeroportoDestino = AEROPORTOS_IATA.find(a => a.codigo === codigoDestino);
+                const nomeOrigem = Utils.formatarNomeProprio(aeroportoOrigem?.nome || codigoOrigem);
+                const nomeDestino = Utils.formatarNomeProprio(aeroportoDestino?.nome || codigoDestino);
+                const logo = await carregarImagemParaPDF('icons/icon-192.png');
 
-                // Nome da empresa
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(18);
-                doc.setFont(undefined, 'bold');
-                doc.text('VOECOMKENNEDY', 12, 15);
-
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'normal');
-                doc.text('PASSAGENS AÉREAS', 12, 21);
-
-                // Data de emissão no canto direito
-                doc.setFontSize(7);
-                doc.text('PROPOSTA GERADA EM', 198, 12, { align: 'right' });
-
-                const dataFormatada = new Date(cotacao.dataCriacao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-                doc.setFontSize(9);
-                doc.setFont(undefined, 'bold');
-                doc.text(dataFormatada, 198, 18, { align: 'right' });
-
-                // ========== SEGUNDA FAIXA - ROTA E PASSAGEIROS ==========
-                doc.setFillColor(35, 47, 73); // Azul um pouco mais escuro
-                doc.rect(0, 35, 210, 20, 'F');
-
-                // Rota grande
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(20);
-                doc.setFont(undefined, 'bold');
-                doc.text(`${cotacao.origem.toUpperCase()}  →  ${cotacao.destino.toUpperCase()}`, 12, 47);
-
-                // Informações do lado direito
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'normal');
-                doc.text(`Proposta para ${cotacao.nomeCliente}`, 198, 42, { align: 'right' });
-
-                // Passageiros
                 const passageiros = [];
-                if (cotacao.adultos > 0) passageiros.push(`${cotacao.adultos} adulto${cotacao.adultos > 1 ? 's' : ''}`);
-                if (cotacao.criancas > 0) passageiros.push(`${cotacao.criancas} criança${cotacao.criancas > 1 ? 's' : ''}`);
-                if (cotacao.bebes > 0) passageiros.push(`${cotacao.bebes} bebê${cotacao.bebes > 1 ? 's' : ''}`);
+                if (Number(cotacao.adultos) > 0) passageiros.push(`${cotacao.adultos} adulto${Number(cotacao.adultos) > 1 ? 's' : ''}`);
+                if (Number(cotacao.criancas) > 0) passageiros.push(`${cotacao.criancas} criança${Number(cotacao.criancas) > 1 ? 's' : ''}`);
+                if (Number(cotacao.bebes) > 0) passageiros.push(`${cotacao.bebes} bebê${Number(cotacao.bebes) > 1 ? 's' : ''}`);
                 const textoPassageiros = passageiros.join(', ') || '1 adulto';
 
-                doc.setFontSize(7);
-                doc.text(`${cotacao.totalPassageiros} passageiro${cotacao.totalPassageiros > 1 ? 's' : ''} - ${textoPassageiros}`, 198, 48, { align: 'right' });
+                const formatarData = (valor, completa = false) => {
+                    if (!valor) return 'Data não informada';
+                    const data = new Date(String(valor).includes('T') ? valor : `${valor}T00:00:00`);
+                    if (Number.isNaN(data.getTime())) return 'Data não informada';
+                    return data.toLocaleDateString('pt-BR', completa
+                        ? { day: '2-digit', month: 'long', year: 'numeric' }
+                        : { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+                };
 
-                let y = 62;
+                const ajustarTexto = (texto, larguraMaxima) => {
+                    let valor = String(texto || '');
+                    if (doc.getTextWidth(valor) <= larguraMaxima) return valor;
+                    while (valor.length > 3 && doc.getTextWidth(`${valor}...`) > larguraMaxima) valor = valor.slice(0, -1);
+                    return `${valor}...`;
+                };
 
-                // ========== VOO DE IDA ==========
-                // Badge IDA
-                doc.setFillColor(26, 54, 93);
-                doc.roundedRect(10, y, 15, 6, 1, 1, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'bold');
-                doc.text('IDA', 17.5, y + 4, { align: 'center' });
+                const desenharSeta = (x1, x2, y, cor = cores.dourado) => {
+                    doc.setDrawColor(...cor);
+                    doc.setFillColor(...cor);
+                    doc.setLineWidth(0.7);
+                    doc.line(x1, y, x2 - 3, y);
+                    doc.triangle(x2 - 3, y - 1.6, x2, y, x2 - 3, y + 1.6, 'F');
+                };
 
-                // Nome da companhia
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(10);
-                doc.text(cotacao.companhiaAerea, 28, y + 4);
+                const desenharCabecalho = (principal = true) => {
+                    doc.setFillColor(...cores.azul);
+                    doc.rect(0, 0, larguraPagina, principal ? 34 : 24, 'F');
+                    doc.setFillColor(...cores.dourado);
+                    doc.rect(0, principal ? 34 : 24, larguraPagina, 1.2, 'F');
 
-                // Tipo de tarifa e voo no canto direito
-                const tipoVooIda = cotacao.temConexaoIda === 'direto' ? 'DIRETO' : `${cotacao.temConexaoIda} ESCALA${parseInt(cotacao.temConexaoIda) > 1 ? 'S' : ''}`;
-                doc.setFontSize(8);
-                doc.text(`${cotacao.tipoTarifa}    ${tipoVooIda}`, 198, y + 4, { align: 'right' });
+                    if (logo) doc.addImage(logo, 'PNG', margem, principal ? 5 : 4, principal ? 23 : 16, principal ? 23 : 16);
 
-                y += 10;
-
-                // Card do voo com borda
-                const cardY = y;
-                doc.setDrawColor(220, 220, 220);
-                doc.setLineWidth(0.3);
-                doc.rect(10, y, 190, 28, 'S');
-
-                // Buscar nomes das cidades
-                const aeroportoOrigem = AEROPORTOS_IATA.find(a => a.codigo === cotacao.origem.toUpperCase());
-                const aeroportoDestino = AEROPORTOS_IATA.find(a => a.codigo === cotacao.destino.toUpperCase());
-                const nomeOrigem = aeroportoOrigem ? aeroportoOrigem.nome : cotacao.origem;
-                const nomeDestino = aeroportoDestino ? aeroportoDestino.nome : cotacao.destino;
-
-                // Horário de saída GRANDE
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(20);
-                doc.setFont(undefined, 'bold');
-                doc.text(cotacao.horaSaidaIda, 15, y + 12);
-
-                // Código do aeroporto de origem
-                doc.setFontSize(10);
-                doc.setFont(undefined, 'bold');
-                doc.text(cotacao.origem.toUpperCase(), 15, y + 18);
-
-                // Nome da cidade de origem
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(100, 100, 100);
-                doc.text(nomeOrigem, 15, y + 22);
-
-                // Duração no centro
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(9);
-                if (cotacao.tempoTotalIda) {
-                    doc.text(cotacao.tempoTotalIda, 105, y + 12, { align: 'center' });
-                }
-
-                // Horário de chegada GRANDE
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(20);
-                doc.setFont(undefined, 'bold');
-                doc.text(cotacao.horaChegadaIda, 195, y + 12, { align: 'right' });
-
-                // Código do aeroporto de destino
-                doc.setFontSize(10);
-                doc.setFont(undefined, 'bold');
-                doc.text(cotacao.destino.toUpperCase(), 195, y + 18, { align: 'right' });
-
-                // Nome da cidade de destino
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(100, 100, 100);
-                doc.text(nomeDestino, 195, y + 22, { align: 'right' });
-
-                y += 28;
-
-                // Box com informações de bagagem e data
-                doc.setDrawColor(220, 220, 220);
-                doc.setLineWidth(0.3);
-                doc.rect(10, y, 190, 8, 'S');
-
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'normal');
-
-                const dataIdaFormatada = new Date(cotacao.dataSaidaIda + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-                doc.text(dataIdaFormatada, 12, y + 5);
-
-                // Informações de bagagem simplificadas
-                const temBagagemMao = cotacao.bagagemIncluida && cotacao.bagagemIncluida.toLowerCase().includes('mão');
-                const temBagagemDesp = cotacao.bagagemIncluida && cotacao.bagagemIncluida.toLowerCase().includes('despacha');
-
-                doc.text(`Mao: ${temBagagemMao ? 'Inclusa' : 'Nao inclusa'}`, 80, y + 5);
-                doc.text(`Despacho: ${temBagagemDesp ? 'Inclusa' : 'Nao inclusa'}`, 140, y + 5);
-
-                y += 10;
-
-                // Mostrar escalas se houver
-                if (cotacao.temConexaoIda !== 'direto' && cotacao.paradasIda && cotacao.paradasIda.length > 0) {
-                    y += 2;
-                    doc.setFillColor(255, 248, 220);
-                    const escalasHeight = 4 + (cotacao.paradasIda.length * 5);
-                    doc.rect(10, y, 190, escalasHeight, 'F');
-
-                    doc.setTextColor(150, 100, 0);
-                    doc.setFontSize(8);
-                    doc.setFont(undefined, 'normal');
-                    let escalasY = y + 4;
-                    cotacao.paradasIda.forEach((parada) => {
-                        doc.text(`Escala de ${parada.tempo} em ${parada.cidade}`, 15, escalasY);
-                        escalasY += 5;
-                    });
-                    y += escalasHeight + 2;
-                }
-
-                y += 3;
-
-                // ========== VOO DE VOLTA (se aplicável) ==========
-                if (cotacao.tipoViagem === 'ida-volta' && cotacao.dataSaidaVolta) {
-                    // Badge VOLTA (verde)
-                    doc.setFillColor(76, 175, 80);
-                    doc.roundedRect(10, y, 20, 6, 1, 1, 'F');
                     doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(8);
-                    doc.setFont(undefined, 'bold');
-                    doc.text('VOLTA', 20, y + 4, { align: 'center' });
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(principal ? 16 : 11);
+                    doc.text('VOE COM KENNEDY', logo ? (principal ? 40 : 33) : margem, principal ? 15 : 10);
+                    doc.setTextColor(...cores.dourado);
+                    doc.setFontSize(principal ? 8 : 6.5);
+                    doc.setCharSpace(0.7);
+                    doc.text('AGÊNCIA DE VIAGENS', logo ? (principal ? 40 : 33) : margem, principal ? 21 : 15);
+                    doc.setCharSpace(0);
 
-                    // Nome da companhia
-                    doc.setTextColor(44, 62, 80);
-                    doc.setFontSize(10);
-                    doc.text(cotacao.companhiaAerea, 33, y + 4);
-
-                    // Tipo de tarifa e voo no canto direito
-                    const tipoVooVolta = cotacao.temConexaoVolta === 'direto' ? 'DIRETO' : `${cotacao.temConexaoVolta} ESCALA${parseInt(cotacao.temConexaoVolta) > 1 ? 'S' : ''}`;
-                    doc.setFontSize(8);
-                    doc.text(`${cotacao.tipoTarifa}    ${tipoVooVolta}`, 198, y + 4, { align: 'right' });
-
-                    y += 10;
-
-                    // Card do voo com borda
-                    doc.setDrawColor(220, 220, 220);
-                    doc.setLineWidth(0.3);
-                    doc.rect(10, y, 190, 28, 'S');
-
-                    // Horário de saída GRANDE (volta - origem e destino invertidos)
-                    doc.setTextColor(44, 62, 80);
-                    doc.setFontSize(20);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(cotacao.horaSaidaVolta, 15, y + 12);
-
-                    // Código do aeroporto de destino (origem da volta)
-                    doc.setFontSize(10);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(cotacao.destino.toUpperCase(), 15, y + 18);
-
-                    // Nome da cidade de destino
+                    doc.setTextColor(220, 228, 236);
+                    doc.setFont('helvetica', 'normal');
                     doc.setFontSize(7);
-                    doc.setFont(undefined, 'normal');
-                    doc.setTextColor(100, 100, 100);
-                    doc.text(nomeDestino, 15, y + 22);
-
-                    // Duração no centro
-                    doc.setTextColor(44, 62, 80);
+                    doc.text(principal ? 'PROPOSTA DE VIAGEM' : 'CONTINUAÇÃO DA PROPOSTA', larguraPagina - margem, principal ? 11 : 9, { align: 'right' });
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
                     doc.setFontSize(9);
-                    if (cotacao.tempoTotalVolta) {
-                        doc.text(cotacao.tempoTotalVolta, 105, y + 12, { align: 'center' });
-                    }
+                    doc.text(formatarData(cotacao.dataCriacao || new Date().toISOString(), true), larguraPagina - margem, principal ? 18 : 15, { align: 'right' });
+                };
 
-                    // Horário de chegada GRANDE
-                    doc.setTextColor(44, 62, 80);
+                const desenharRodapes = () => {
+                    const totalPaginas = doc.getNumberOfPages();
+                    for (let pagina = 1; pagina <= totalPaginas; pagina++) {
+                        doc.setPage(pagina);
+                        doc.setFillColor(...cores.azul);
+                        doc.rect(0, alturaPagina - 17, larguraPagina, 17, 'F');
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(8.5);
+                        doc.text('VOE COM KENNEDY - AGÊNCIA DE VIAGENS', margem, alturaPagina - 10);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(6.5);
+                        doc.setTextColor(216, 225, 233);
+                        doc.text('Valores sujeitos à disponibilidade no momento da emissão.', margem, alturaPagina - 6);
+                        doc.text(`${pagina}/${totalPaginas}`, larguraPagina - margem, alturaPagina - 8, { align: 'right' });
+                    }
+                };
+
+                desenharCabecalho(true);
+
+                // Rota principal com nomes das cidades e códigos IATA separados.
+                doc.setFillColor(...cores.azulClaro);
+                doc.roundedRect(margem, 42, larguraConteudo, 26, 2.5, 2.5, 'F');
+                doc.setTextColor(207, 218, 228);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.text('ITINERÁRIO', margem + 7, 49);
+
+                const larguraCidade = 61;
+                doc.setTextColor(255, 255, 255);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text(ajustarTexto(nomeOrigem, larguraCidade), margem + 7, 59);
+                doc.text(ajustarTexto(nomeDestino, larguraCidade), margem + larguraConteudo - 7, 59, { align: 'right' });
+                doc.setFontSize(8);
+                doc.setTextColor(...cores.dourado);
+                doc.text(codigoOrigem, margem + 7, 64.5);
+                doc.text(codigoDestino, margem + larguraConteudo - 7, 64.5, { align: 'right' });
+                desenharSeta(margem + 76, margem + larguraConteudo - 76, 57);
+
+                doc.setTextColor(...cores.texto);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text(`Proposta para ${ajustarTexto(cotacao.nomeCliente || 'Cliente', 80)}`, margem, 76);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...cores.cinza);
+                doc.setFontSize(7.5);
+                doc.text(textoPassageiros, larguraPagina - margem, 76, { align: 'right' });
+
+                let y = 82;
+                const limiteConteudo = alturaPagina - 24;
+                const garantirEspaco = (alturaNecessaria) => {
+                    if (y + alturaNecessaria <= limiteConteudo) return;
+                    doc.addPage();
+                    desenharCabecalho(false);
+                    y = 32;
+                };
+
+                const desenharVoo = ({ titulo, corBadge, origem, destino, cidadeOrigem, cidadeDestino, data, saida, chegada, duracao, conexao, paradas }) => {
+                    const listaParadas = Array.isArray(paradas) ? paradas.filter(p => p && (p.cidade || p.tempo)) : [];
+                    const alturaEscalas = listaParadas.length ? 7 + ((listaParadas.length - 1) * 5) : 0;
+                    const alturaTotal = 50 + alturaEscalas;
+                    garantirEspaco(alturaTotal);
+
+                    doc.setFillColor(...corBadge);
+                    doc.roundedRect(margem, y, titulo === 'VOLTA' ? 21 : 16, 7, 1.5, 1.5, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(7.5);
+                    doc.text(titulo, margem + (titulo === 'VOLTA' ? 10.5 : 8), y + 4.8, { align: 'center' });
+
+                    doc.setTextColor(...cores.texto);
+                    doc.setFontSize(9.5);
+                    doc.text(ajustarTexto(cotacao.companhiaAerea || 'Companhia aérea', 65), margem + (titulo === 'VOLTA' ? 25 : 20), y + 5);
+                    const quantidadeEscalas = conexao === 'direto' ? 'VOO DIRETO' : `${conexao || listaParadas.length} ESCALA${Number(conexao || listaParadas.length) > 1 ? 'S' : ''}`;
+                    doc.setFontSize(7.5);
+                    doc.text(`${cotacao.tipoTarifa || 'Tarifa'}  |  ${quantidadeEscalas}`, larguraPagina - margem, y + 5, { align: 'right' });
+                    y += 8;
+
+                    doc.setFillColor(255, 255, 255);
+                    doc.setDrawColor(...cores.borda);
+                    doc.setLineWidth(0.35);
+                    doc.roundedRect(margem, y, larguraConteudo, 29, 2, 2, 'FD');
+
+                    doc.setTextColor(...cores.texto);
+                    doc.setFont('helvetica', 'bold');
                     doc.setFontSize(20);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(cotacao.horaChegadaVolta, 195, y + 12, { align: 'right' });
-
-                    // Código do aeroporto de origem (destino da volta)
+                    doc.text(saida || '--:--', margem + 8, y + 13);
+                    doc.text(chegada || '--:--', larguraPagina - margem - 8, y + 13, { align: 'right' });
                     doc.setFontSize(10);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(cotacao.origem.toUpperCase(), 195, y + 18, { align: 'right' });
-
-                    // Nome da cidade de origem
+                    doc.text(origem, margem + 8, y + 20);
+                    doc.text(destino, larguraPagina - margem - 8, y + 20, { align: 'right' });
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...cores.cinza);
                     doc.setFontSize(7);
-                    doc.setFont(undefined, 'normal');
-                    doc.setTextColor(100, 100, 100);
-                    doc.text(nomeOrigem, 195, y + 22, { align: 'right' });
+                    doc.text(ajustarTexto(cidadeOrigem, 55), margem + 8, y + 25);
+                    doc.text(ajustarTexto(cidadeDestino, 55), larguraPagina - margem - 8, y + 25, { align: 'right' });
 
-                    y += 28;
+                    desenharSeta(margem + 69, larguraPagina - margem - 69, y + 15, cores.borda);
+                    doc.setTextColor(...cores.texto);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8);
+                    doc.text(duracao || 'Duração não informada', larguraPagina / 2, y + 11.5, { align: 'center' });
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...cores.cinza);
+                    doc.setFontSize(6.5);
+                    doc.text(quantidadeEscalas, larguraPagina / 2, y + 21, { align: 'center' });
+                    y += 29;
 
-                    // Box com informações de bagagem e data
-                    doc.setDrawColor(220, 220, 220);
-                    doc.setLineWidth(0.3);
-                    doc.rect(10, y, 190, 8, 'S');
-
-                    doc.setTextColor(44, 62, 80);
+                    doc.setFillColor(...cores.fundo);
+                    doc.roundedRect(margem, y + 1, larguraConteudo, 8, 1.5, 1.5, 'F');
+                    doc.setTextColor(...cores.texto);
                     doc.setFontSize(7);
-                    doc.setFont(undefined, 'normal');
+                    doc.text(formatarData(data), margem + 5, y + 6.5);
+                    const bagagem = String(cotacao.bagagemIncluida || '').toLowerCase();
+                    const maoInclusa = bagagem.includes('mão') || bagagem.includes('mao') || bagagem.includes('mochila');
+                    const despachadaNegada = /(sem|não inclui|nao inclui|não inclusa|nao inclusa)[^|\n]*despachada/.test(bagagem);
+                    const despachadaInclusa = !despachadaNegada && (bagagem.includes('despachada') || bagagem.includes('23 kg') || bagagem.includes('23kg'));
+                    doc.text(`Bagagem de mão: ${maoInclusa ? 'inclusa' : 'não informada'}`, larguraPagina / 2, y + 6.5, { align: 'center' });
+                    doc.text(`Despachada: ${despachadaInclusa ? 'inclusa' : 'não inclusa'}`, larguraPagina - margem - 5, y + 6.5, { align: 'right' });
+                    y += 11;
 
-                    const dataVoltaFormatada = new Date(cotacao.dataSaidaVolta + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-                    doc.text(dataVoltaFormatada, 12, y + 5);
-
-                    doc.text(`Mao: ${temBagagemMao ? 'Inclusa' : 'Nao inclusa'}`, 80, y + 5);
-                    doc.text(`Despacho: ${temBagagemDesp ? 'Inclusa' : 'Nao inclusa'}`, 140, y + 5);
-
-                    y += 10;
-
-                    // Mostrar escalas se houver
-                    if (cotacao.temConexaoVolta !== 'direto' && cotacao.paradasVolta && cotacao.paradasVolta.length > 0) {
-                        y += 2;
-                        doc.setFillColor(255, 248, 220);
-                        const escalasHeight = 4 + (cotacao.paradasVolta.length * 5);
-                        doc.rect(10, y, 190, escalasHeight, 'F');
-
-                        doc.setTextColor(150, 100, 0);
-                        doc.setFontSize(8);
-                        doc.setFont(undefined, 'normal');
-                        let escalasY = y + 4;
-                        cotacao.paradasVolta.forEach((parada) => {
-                            doc.text(`Escala de ${parada.tempo} em ${parada.cidade}`, 15, escalasY);
-                            escalasY += 5;
+                    if (listaParadas.length) {
+                        doc.setFillColor(...cores.amareloFundo);
+                        doc.roundedRect(margem, y, larguraConteudo, alturaEscalas, 1.5, 1.5, 'F');
+                        doc.setTextColor(142, 98, 16);
+                        doc.setFontSize(7.5);
+                        listaParadas.forEach((parada, indice) => {
+                            const cidade = parada.cidade || 'local não informado';
+                            const tempo = parada.tempo ? ` por ${parada.tempo}` : '';
+                            doc.text(`Conexão ${indice + 1}: ${cidade}${tempo}`, margem + 5, y + 4.5 + (indice * 5));
                         });
-                        y += escalasHeight + 2;
+                        y += alturaEscalas + 2;
+                    } else {
+                        y += 2;
                     }
+                };
 
-                    y += 3;
+                desenharVoo({
+                    titulo: 'IDA', corBadge: cores.azulClaro,
+                    origem: codigoOrigem, destino: codigoDestino,
+                    cidadeOrigem: nomeOrigem, cidadeDestino: nomeDestino,
+                    data: cotacao.dataSaidaIda, saida: cotacao.horaSaidaIda,
+                    chegada: cotacao.horaChegadaIda, duracao: cotacao.tempoTotalIda,
+                    conexao: cotacao.temConexaoIda, paradas: cotacao.paradasIda
+                });
+
+                if (cotacao.tipoViagem === 'ida-volta' && cotacao.dataSaidaVolta) {
+                    desenharVoo({
+                        titulo: 'VOLTA', corBadge: cores.verde,
+                        origem: codigoDestino, destino: codigoOrigem,
+                        cidadeOrigem: nomeDestino, cidadeDestino: nomeOrigem,
+                        data: cotacao.dataSaidaVolta, saida: cotacao.horaSaidaVolta,
+                        chegada: cotacao.horaChegadaVolta, duracao: cotacao.tempoTotalVolta,
+                        conexao: cotacao.temConexaoVolta, paradas: cotacao.paradasVolta
+                    });
                 }
 
-                // ========== SEÇÃO DE VALORES (BOXES LADO A LADO) ==========
-                doc.setFillColor(248, 249, 250);
-                doc.rect(10, y, 190, 7, 'F');
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(10);
-                doc.setFont(undefined, 'bold');
-                doc.text('VALORES', 12, y + 5);
-
-                y += 10;
-
-                // BOX ESQUERDO - PIX (fundo verde claro)
-                doc.setFillColor(232, 245, 233);
-                doc.setDrawColor(200, 230, 201);
-                doc.setLineWidth(0.3);
-                doc.roundedRect(10, y, 92, 22, 2, 2, 'FD');
-
-                doc.setTextColor(46, 125, 50);
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'normal');
-                doc.text('TOTAL VIA PIX', 15, y + 6);
-
-                doc.setTextColor(27, 94, 32);
-                doc.setFontSize(16);
-                doc.setFont(undefined, 'bold');
-                doc.text(Utils.formatCurrency(cotacao.valorTotalPix).replace('R$ ', ''), 15, y + 14);
-
-                doc.setTextColor(69, 90, 100);
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'normal');
-                doc.text(`R$ ${(cotacao.valorPorPessoa).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por pessoa`, 15, y + 19);
-
-                // BOX DIREITO - CARTÃO (fundo cinza claro)
-                doc.setFillColor(245, 245, 245);
-                doc.setDrawColor(224, 224, 224);
-                doc.setLineWidth(0.3);
-                doc.roundedRect(108, y, 92, 22, 2, 2, 'FD');
-
-                doc.setTextColor(66, 66, 66);
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'normal');
-                doc.text(`NO CARTÃO — ${cotacao.numParcelas} PARCELA${cotacao.numParcelas > 1 ? 'S' : ''}`, 113, y + 6);
-
-                doc.setTextColor(44, 62, 80);
-                doc.setFontSize(16);
-                doc.setFont(undefined, 'bold');
-                doc.text(`${cotacao.numParcelas}x de ${Utils.formatCurrency(cotacao.valorParcela).replace('R$ ', '')}`, 113, y + 14);
-
-                doc.setTextColor(69, 90, 100);
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'normal');
-                doc.text(`Já com juros inclusos`, 113, y + 19);
-
-                y += 27;
-
-                // ========== RODAPÉ AZUL ESCURO ==========
-                const footerY = 280;
-
-                doc.setFillColor(26, 54, 93);
-                doc.rect(0, footerY - 5, 210, 22, 'F');
-
-                doc.setTextColor(255, 255, 255);
+                garantirEspaco(48);
+                doc.setTextColor(...cores.texto);
+                doc.setFont('helvetica', 'bold');
                 doc.setFontSize(9);
-                doc.setFont(undefined, 'bold');
-                doc.text('VOECOMKENNEDY — PASSAGENS AÉREAS', 105, footerY + 2, { align: 'center' });
+                doc.text('INVESTIMENTO', margem, y + 3);
+                doc.setDrawColor(...cores.dourado);
+                doc.setLineWidth(0.7);
+                doc.line(margem, y + 6, margem + 34, y + 6);
+                y += 11;
 
-                doc.setFont(undefined, 'normal');
+                doc.setFillColor(...cores.verdeFundo);
+                doc.setDrawColor(197, 228, 208);
+                doc.roundedRect(margem, y, 89, 28, 2.5, 2.5, 'FD');
+                doc.setTextColor(...cores.verde);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                doc.text('PAGAMENTO VIA PIX', margem + 6, y + 7);
+                doc.setFontSize(17);
+                doc.text(Utils.formatCurrency(Number(cotacao.valorTotalPix) || 0), margem + 6, y + 17);
+                doc.setFont('helvetica', 'normal');
                 doc.setFontSize(7);
-                doc.text('Proposta válida conforme disponibilidade. Entre em contato para confirmar sua reserva.', 105, footerY + 8, { align: 'center' });
+                doc.text(`${Utils.formatCurrency(Number(cotacao.valorPorPessoa) || 0)} por pessoa`, margem + 6, y + 24);
+
+                doc.setFillColor(...cores.fundo);
+                doc.setDrawColor(...cores.borda);
+                doc.roundedRect(larguraPagina - margem - 89, y, 89, 28, 2.5, 2.5, 'FD');
+                doc.setTextColor(...cores.texto);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7.5);
+                const numeroParcelas = Number(cotacao.numParcelas) || 1;
+                doc.text(`CARTÃO EM ATÉ ${numeroParcelas}X`, larguraPagina - margem - 83, y + 7);
+                doc.setFontSize(17);
+                doc.text(`${numeroParcelas}x de ${Utils.formatCurrency(Number(cotacao.valorParcela) || 0)}`, larguraPagina - margem - 83, y + 17);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.text('Taxas do parcelamento já incluídas', larguraPagina - margem - 83, y + 24);
+                y += 35;
+
+                if (cotacao.bagagemIncluida) {
+                    garantirEspaco(22);
+                    doc.setFillColor(...cores.fundo);
+                    doc.roundedRect(margem, y, larguraConteudo, 16, 1.5, 1.5, 'F');
+                    doc.setTextColor(...cores.texto);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(7.5);
+                    doc.text('BAGAGEM INCLUÍDA', margem + 5, y + 5);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...cores.cinza);
+                    doc.setFontSize(6.5);
+                    const linhasBagagem = doc.splitTextToSize(String(cotacao.bagagemIncluida).replace(/\n/g, ' | '), larguraConteudo - 10).slice(0, 2);
+                    doc.text(linhasBagagem, margem + 5, y + 10, { lineHeightFactor: 1.15 });
+                }
+
+                desenharRodapes();
 
                 // Salvar PDF
-                doc.save(`cotacao-${cotacao.nomeCliente.replace(/\s+/g, '-')}.pdf`);
+                const nomeArquivo = String(cotacao.nomeCliente || 'cliente')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-zA-Z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                    .toLowerCase();
+                doc.save(`proposta-${nomeArquivo || 'cliente'}.pdf`);
                 Utils.showSuccess('PDF gerado com sucesso!');
             } catch (error) {
                 console.error('Erro ao gerar PDF:', error);
