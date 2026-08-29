@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrar - Voecomkennedy</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#2C3E50">
+    <meta name="application-name" content="Voecomkennedy">
+    <meta name="apple-mobile-web-app-title" content="Voecomkennedy">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -36,17 +42,14 @@
             padding: 34px 24px 28px;
         }
         .login-logo {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: #D4AF37;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.9rem;
-            color: #2C3E50;
-            margin-bottom: 12px;
-            box-shadow: 0 6px 16px rgba(212,175,55,0.4);
+            width: 88px;
+            height: 88px;
+            border: 1px solid rgba(212,175,55,0.7);
+            border-radius: 22px;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+            display: block;
+            margin: 0 auto 14px;
+            object-fit: cover;
         }
         .login-header h1 {
             font-size: 1.5rem;
@@ -111,7 +114,7 @@
 <body>
     <main class="login-card">
         <header class="login-header">
-            <div class="login-logo"><i class="bi bi-airplane-fill"></i></div>
+            <img src="icons/icon-192.png" alt="Logo Voecomkennedy" class="login-logo">
             <h1>Voecomkennedy</h1>
             <p>Sistema de Emissão de Passagens</p>
         </header>

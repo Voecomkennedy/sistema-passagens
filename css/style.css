@@ -101,14 +101,14 @@ body {
     text-shadow: 0 4px 12px rgba(212, 175, 55, 0.5);
 }
 
-.navbar-brand i {
-    font-size: 1.8rem;
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-5px); }
+.navbar-brand-logo {
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(212, 175, 55, 0.55);
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+    flex: 0 0 auto;
+    object-fit: cover;
 }
 
 .nav-link {
@@ -734,6 +734,12 @@ h1, h2, h3, h4, h5, h6 {
 
     .navbar-brand {
         font-size: 1.2rem;
+    }
+
+    .navbar-brand-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
     }
 
     .card-body {
